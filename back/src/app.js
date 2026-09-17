@@ -13,21 +13,27 @@ const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
   : null;
 
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (!allowedOrigins || allowedOrigins.includes('*')) return true;
+  if (allowedOrigins.includes(origin)) return true;
+  // Admin on same host, port 3000 -> API on 3001
+  if (/^https?:\/\/[\w.-]+:3000$/.test(origin)) return true;
+  return false;
+}
+
 app.use(
-  cors(
-    allowedOrigins
-      ? {
-          origin(origin, callback) {
-            if (!origin || allowedOrigins.includes(origin)) {
-              callback(null, true);
-            } else {
-              callback(new Error(`CORS blocked: ${origin}`));
-            }
-          },
-          credentials: true,
-        }
-      : { origin: true },
-  ),
+  cors({
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  }),
 );
 app.use(express.json());
 

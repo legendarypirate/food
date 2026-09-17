@@ -33,15 +33,17 @@ function sendFile(res, filePath) {
 }
 
 function proxyToBackend(req, res) {
+  const headers = { ...req.headers, host: backend.host };
+  // Drop browser origin — proxied call is server-to-server; avoids false CORS blocks on PUT/DELETE
+  delete headers.origin;
+  delete headers.referer;
+
   const options = {
     hostname: backend.hostname,
     port: backend.port || (backend.protocol === 'https:' ? 443 : 80),
     path: req.url,
     method: req.method,
-    headers: {
-      ...req.headers,
-      host: backend.host,
-    },
+    headers,
   };
 
   const proxyReq = httpRequest(options, (proxyRes) => {
