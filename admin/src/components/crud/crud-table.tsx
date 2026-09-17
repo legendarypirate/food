@@ -39,18 +39,11 @@ export function CrudTable<T>({
     <Card>
       <CardContent className="p-0">
         <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/40 hover:bg-muted/40">
-              <TableHead className="w-[120px] text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                {actionsLabel}
-              </TableHead>
+          <TableHeader className="sticky top-0 z-10">
+            <TableRow className="border-b-2 border-border/80 bg-muted/70 hover:bg-muted/70">
+              <TableHead className="w-[108px]">{actionsLabel}</TableHead>
               {columns.map((col) => (
-                <TableHead
-                  key={col.key}
-                  className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  {col.header}
-                </TableHead>
+                <TableHead key={col.key}>{col.header}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
