@@ -33,6 +33,39 @@ npm run dev
 
 Open http://localhost:3000
 
+## Production (PM2)
+
+Build the admin **before** starting PM2 (set your API URL for the build):
+
+```bash
+cd admin
+npm install
+VITE_API_URL=https://your-domain.com/api npm run build
+npm start   # serves dist/ on port 3000
+```
+
+Backend:
+
+```bash
+cd back
+cp .env.example .env   # configure production DB + CORS
+npm install
+npm run seed           # first deploy only
+npm start              # port 3001
+```
+
+Or run both from repo root:
+
+```bash
+npm install --prefix back
+npm install --prefix admin
+VITE_API_URL=https://your-domain.com/api npm run build --prefix admin
+pm2 start ecosystem.config.cjs
+pm2 save
+```
+
+**Note:** `npm start` in `admin/` requires `dist/` to exist — run `npm run build` first.
+
 ## Flutter
 
 ```bash
