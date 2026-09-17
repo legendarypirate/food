@@ -12,11 +12,11 @@ module.exports = {
     {
       name: 'foody-admin',
       cwd: './admin',
-      script: 'npm',
-      args: 'start',
+      script: 'server.js',
       env: {
         NODE_ENV: 'production',
         PORT: 3000,
+        HOST: '0.0.0.0',
       },
     },
   ],

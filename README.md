@@ -41,7 +41,7 @@ Build the admin **before** starting PM2 (set your API URL for the build):
 cd admin
 npm install
 VITE_API_URL=https://your-domain.com/api npm run build
-npm start   # serves dist/ on port 3000
+node server.js   # or: npm start — serves dist/ on port 3000
 ```
 
 Backend:
