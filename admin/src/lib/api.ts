@@ -1,4 +1,5 @@
-const API = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+// Relative /api — proxied by Vite (dev) and server.js (prod). No CORS issues.
+const API = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {

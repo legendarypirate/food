@@ -1,4 +1,5 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
+import { request as httpRequest } from 'node:http';
 import { join, extname } from 'node:path';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
@@ -7,6 +8,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const distDir = join(__dirname, 'dist');
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '0.0.0.0';
+const backend = new URL(process.env.API_BACKEND || 'http://127.0.0.1:3001');
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -30,8 +32,41 @@ function sendFile(res, filePath) {
   createReadStream(filePath).pipe(res);
 }
 
+function proxyToBackend(req, res) {
+  const options = {
+    hostname: backend.hostname,
+    port: backend.port || (backend.protocol === 'https:' ? 443 : 80),
+    path: req.url,
+    method: req.method,
+    headers: {
+      ...req.headers,
+      host: backend.host,
+    },
+  };
+
+  const proxyReq = httpRequest(options, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', (err) => {
+    console.error('API proxy error:', err.message);
+    res.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: 'API unavailable. Is the backend running on port 3001?' }));
+  });
+
+  req.pipe(proxyReq);
+}
+
 const server = createServer((req, res) => {
-  const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
+  const rawUrl = req.url || '/';
+
+  if (rawUrl.startsWith('/api')) {
+    proxyToBackend(req, res);
+    return;
+  }
+
+  const urlPath = decodeURIComponent(rawUrl.split('?')[0]);
   let filePath = join(distDir, urlPath === '/' ? 'index.html' : urlPath);
 
   if (!filePath.startsWith(distDir)) {
@@ -61,4 +96,5 @@ if (!existsSync(distDir)) {
 
 server.listen(port, host, () => {
   console.log(`foody admin running on http://${host}:${port}`);
+  console.log(`API proxy -> ${backend.origin}`);
 });

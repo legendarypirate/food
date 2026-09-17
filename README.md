@@ -35,20 +35,22 @@ Open http://localhost:3000
 
 ## Production (PM2)
 
-Build the admin **before** starting PM2 (set your API URL for the build):
+Build the admin **before** starting PM2:
 
 ```bash
 cd admin
 npm install
-VITE_API_URL=https://your-domain.com/api npm run build
-node server.js   # or: npm start — serves dist/ on port 3000
+npm run build
+node server.js   # or: npm start — serves dist/ + proxies /api -> :3001
 ```
+
+The admin uses relative `/api` URLs (proxied to the backend). No CORS setup needed for admin.
 
 Backend:
 
 ```bash
 cd back
-cp .env.example .env   # configure production DB + CORS
+cp .env.example .env   # set DB password + CORS_ORIGIN (admin URL)
 npm install
 npm run seed           # first deploy only
 npm start              # port 3001
@@ -59,7 +61,7 @@ Or run both from repo root:
 ```bash
 npm install --prefix back
 npm install --prefix admin
-VITE_API_URL=https://your-domain.com/api npm run build --prefix admin
+npm run build --prefix admin
 pm2 start ecosystem.config.cjs
 pm2 save
 ```

@@ -7,8 +7,28 @@ import apiRoutes from './routes/index.js';
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
+const host = process.env.HOST || '0.0.0.0';
 
-app.use(cors({ origin: true }));
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim()).filter(Boolean)
+  : null;
+
+app.use(
+  cors(
+    allowedOrigins
+      ? {
+          origin(origin, callback) {
+            if (!origin || allowedOrigins.includes(origin)) {
+              callback(null, true);
+            } else {
+              callback(new Error(`CORS blocked: ${origin}`));
+            }
+          },
+          credentials: true,
+        }
+      : { origin: true },
+  ),
+);
 app.use(express.json());
 
 app.use('/api', apiRoutes);
@@ -21,8 +41,8 @@ app.use((err, _req, res, _next) => {
 async function start() {
   await sequelize.authenticate();
   await sequelize.sync();
-  app.listen(port, () => {
-    console.log(`foody API running on http://localhost:${port}`);
+  app.listen(port, host, () => {
+    console.log(`foody API running on http://${host}:${port}`);
   });
 }
 

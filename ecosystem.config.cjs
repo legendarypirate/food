@@ -17,6 +17,7 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000,
         HOST: '0.0.0.0',
+        API_BACKEND: 'http://127.0.0.1:3001',
       },
     },
   ],
