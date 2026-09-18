@@ -36,7 +36,7 @@ const restaurants = [
   {
     slug: 'r2',
     name: 'The Bull Hotpot',
-    imageUrl: 'https://images.unsplash.com/photo-1555126634-323283e09052?w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=800&q=80',
     rating: 4.8,
     reviewCount: 890,
     deliveryTime: '20–30 мин',
@@ -50,7 +50,7 @@ const restaurants = [
   {
     slug: 'r3',
     name: 'Artisan Burger & Grill',
-    imageUrl: 'https://images.unsplash.com/photo-1571091718767-18b5b1457a45?w=800&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=80',
     rating: 4.7,
     reviewCount: 650,
     deliveryTime: '25–35 мин',
@@ -81,8 +81,8 @@ const dishes = [
   { slug: 'd1', name: 'Тарган сайхан сет', price: 15900, imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=600&q=80', badge: '10% OFF', badgeType: 'discount', servings: '1 хүн', likes: 315, restaurantSlug: 'r3', categorySlug: 'popular' },
   { slug: 'd2', name: 'Ramen Set', price: 22500, imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&q=80', badge: 'Шинэ', badgeType: 'newItem', servings: '1 хүн', likes: 248, restaurantSlug: 'r1', categorySlug: 'japanese' },
   { slug: 'd3', name: 'BBQ Burger', price: 18900, imageUrl: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=600&q=80', badge: '15% OFF', badgeType: 'discount', servings: '2 хүн', likes: 412, restaurantSlug: 'r3', categorySlug: 'beef' },
-  { slug: 'd4', name: 'Hotpot Deluxe', price: 34900, imageUrl: 'https://images.unsplash.com/photo-1555126634-323283e09052?w=600&q=80', badge: 'Шинэ', badgeType: 'newItem', servings: '2–3 хүн', likes: 189, restaurantSlug: 'r2', categorySlug: 'chinese' },
-  { slug: 'd5', name: 'Chicken Teriyaki', price: 17500, imageUrl: 'https://images.unsplash.com/photo-1606491956689-2ea866258177?w=600&q=80', badge: '10% OFF', badgeType: 'discount', servings: '1 хүн', likes: 276, restaurantSlug: 'r4', categorySlug: 'chicken' },
+  { slug: 'd4', name: 'Hotpot Deluxe', price: 34900, imageUrl: 'https://images.unsplash.com/photo-1563379926898-05f4575a45d8?w=600&q=80', badge: 'Шинэ', badgeType: 'newItem', servings: '2–3 хүн', likes: 189, restaurantSlug: 'r2', categorySlug: 'chinese' },
+  { slug: 'd5', name: 'Chicken Teriyaki', price: 17500, imageUrl: 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&q=80', badge: '10% OFF', badgeType: 'discount', servings: '1 хүн', likes: 276, restaurantSlug: 'r4', categorySlug: 'chicken' },
 ];
 
 const activeTracking = {
