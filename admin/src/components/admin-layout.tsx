@@ -43,7 +43,7 @@ export function AdminLayout() {
               key={to}
               to={to}
               end={'end' in rest ? rest.end : false}
-              className={({ isActive }) =>
+              className={({ isActive }: { isActive: boolean }) =>
                 cn(
                   'flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                   isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted',
