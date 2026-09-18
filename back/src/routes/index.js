@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import auth from './auth.js';
 import categories from './categories.js';
 import dishes from './dishes.js';
 import orders from './orders.js';
@@ -12,6 +13,7 @@ router.get('/health', (_req, res) => {
   res.json({ ok: true, service: 'foody-api' });
 });
 
+router.use('/auth', auth);
 router.use('/categories', categories);
 router.use('/restaurants', restaurants);
 router.use('/dishes', dishes);

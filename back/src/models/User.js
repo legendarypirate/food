@@ -16,6 +16,8 @@ const User = sequelize.define(
     points: { type: DataTypes.INTEGER, defaultValue: 0 },
     orderCount: { type: DataTypes.INTEGER, defaultValue: 0 },
     avatarUrl: { type: DataTypes.TEXT, allowNull: true },
+    googleId: { type: DataTypes.STRING, allowNull: true, unique: true },
+    deliveryAddress: { type: DataTypes.STRING, allowNull: true },
     isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
   },
   { tableName: 'users', underscored: true },

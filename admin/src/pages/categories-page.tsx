@@ -1,5 +1,7 @@
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { AdminPageHeader } from '@/components/admin-page-header';
+import { AdminPageState } from '@/components/admin-page-state';
 import { CrudTable } from '@/components/crud/crud-table';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -8,15 +10,29 @@ import { Label } from '@/components/ui/label';
 import { api, type Category } from '@/lib/api';
 import { mn } from '@/lib/mn';
 
-type Props = {
-  categories: Category[];
-  onRefresh: () => void;
-};
-
-export function CategoriesPage({ categories, onRefresh }: Props) {
+export function CategoriesPage() {
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
   const [form, setForm] = useState<Partial<Category>>({});
+
+  const onRefresh = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      setCategories(await api.categories.list());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : mn.loadError);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    onRefresh();
+  }, [onRefresh]);
 
   function openCreate() {
     setEditing(null);
@@ -47,6 +63,9 @@ export function CategoriesPage({ categories, onRefresh }: Props) {
   }
 
   return (
+    <>
+      <AdminPageHeader title={mn.pages.categories} onRefresh={onRefresh} />
+      <AdminPageState loading={loading} error={error}>
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button onClick={openCreate}>
@@ -106,5 +125,7 @@ export function CategoriesPage({ categories, onRefresh }: Props) {
         </DialogContent>
       </Dialog>
     </div>
+      </AdminPageState>
+    </>
   );
 }

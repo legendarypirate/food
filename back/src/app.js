@@ -46,7 +46,7 @@ app.use((err, _req, res, _next) => {
 
 async function start() {
   await sequelize.authenticate();
-  await sequelize.sync();
+  await sequelize.sync({ alter: true });
   app.listen(port, host, () => {
     console.log(`foody API running on http://${host}:${port}`);
   });

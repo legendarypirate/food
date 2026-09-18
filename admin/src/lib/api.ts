@@ -1,9 +1,20 @@
+import { getAuth } from './auth';
+
 // Relative /api — proxied by Vite (dev) and server.js (prod). No CORS issues.
 const API = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 
+function authHeaders(): Record<string, string> {
+  const token = getAuth()?.token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders(),
+      ...options?.headers,
+    },
     ...options,
   });
   if (!res.ok) {
@@ -48,12 +59,24 @@ export const api = {
       request<Dish>(`/dishes/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     remove: (id: string) => request<void>(`/dishes/${id}`, { method: 'DELETE' }),
   },
+  auth: {
+    login: (phone: string, password: string) =>
+      request<{ ok: boolean; token: string; user: { id: number; name: string; phone: string; role: string } }>(
+        '/auth/login',
+        { method: 'POST', body: JSON.stringify({ phone, password }) },
+      ),
+  },
   orders: {
     list: () => request<Order[]>('/orders'),
     updateStatus: (id: string, status: string) =>
       request<Order>(`/orders/${id}/status`, {
         method: 'PATCH',
         body: JSON.stringify({ status }),
+      }),
+    updateAction: (id: string, action: OrderAction) =>
+      request<Order>(`/orders/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ action }),
       }),
   },
   payments: {
@@ -138,6 +161,16 @@ export type QPayPayment = {
   isActive: boolean;
 };
 
+export type OrderAction = 'preparing' | 'out_for_delivery' | 'delivered' | 'cancelled';
+
+export type TrackingStep = {
+  label: string;
+  icon: string;
+  state: 'completed' | 'active' | 'pending';
+  time?: string;
+  subtitle?: string;
+};
+
 export type Order = {
   id: string;
   orderNumber: string;
@@ -147,4 +180,7 @@ export type Order = {
   date: string;
   deliveryAddress: string;
   items: { name: string; quantity: number; price: number }[];
+  tracking?: {
+    steps: TrackingStep[];
+  } | null;
 };

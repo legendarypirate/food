@@ -36,7 +36,15 @@ export const mn = {
     delivered: 'Хүргэгдсэн',
     cancelled: 'Цуцлагдсан',
   },
+  orderActions: {
+    preparing: 'Бэлтгэгдсэн',
+    out_for_delivery: 'Хүргэлтэнд гарсан',
+    delivered: 'Хүргэгдсэн',
+    cancelled: 'Цуцлах',
+  },
+  trackingStep: 'Одоогийн алхам',
   markDelivered: 'Хүргэгдсэн гэж тэмдэглэх',
+  logout: 'Гарах',
   dialogs: {
     newUser: 'Шинэ хэрэглэгч',
     editUser: 'Хэрэглэгч засах',

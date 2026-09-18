@@ -75,6 +75,7 @@ export function serializeUser(u) {
     points: json.points,
     orderCount: json.orderCount,
     avatarUrl: json.avatarUrl,
+    deliveryAddress: json.deliveryAddress || null,
     isActive: json.isActive,
     createdAt: json.createdAt,
   };

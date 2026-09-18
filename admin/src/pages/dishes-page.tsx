@@ -1,5 +1,7 @@
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { AdminPageHeader } from '@/components/admin-page-header';
+import { AdminPageState } from '@/components/admin-page-state';
 import { CrudTable } from '@/components/crud/crud-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,16 +11,32 @@ import { Label } from '@/components/ui/label';
 import { api, type Dish, type Restaurant } from '@/lib/api';
 import { mn } from '@/lib/mn';
 
-type Props = {
-  dishes: Dish[];
-  restaurants: Restaurant[];
-  onRefresh: () => void;
-};
-
-export function DishesPage({ dishes, restaurants, onRefresh }: Props) {
+export function DishesPage() {
+  const [dishes, setDishes] = useState<Dish[]>([]);
+  const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Dish | null>(null);
   const [form, setForm] = useState<Record<string, unknown>>({});
+
+  const onRefresh = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [d, r] = await Promise.all([api.dishes.list(), api.restaurants.list()]);
+      setDishes(d);
+      setRestaurants(r);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : mn.loadError);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    onRefresh();
+  }, [onRefresh]);
 
   function openCreate() {
     setEditing(null);
@@ -66,6 +84,9 @@ export function DishesPage({ dishes, restaurants, onRefresh }: Props) {
   }
 
   return (
+    <>
+      <AdminPageHeader title={mn.pages.dishes} onRefresh={onRefresh} />
+      <AdminPageState loading={loading} error={error}>
     <div className="space-y-4">
       <div className="flex justify-end">
         <Button onClick={openCreate}>
@@ -151,6 +172,8 @@ export function DishesPage({ dishes, restaurants, onRefresh }: Props) {
         </DialogContent>
       </Dialog>
     </div>
+      </AdminPageState>
+    </>
   );
 }
 
