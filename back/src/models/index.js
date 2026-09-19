@@ -25,6 +25,8 @@ Category.hasMany(Dish, { foreignKey: 'categoryId', as: 'dishes' });
 
 User.hasMany(Order, { foreignKey: 'userId', as: 'orders' });
 Order.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+User.hasMany(Order, { foreignKey: 'courierId', as: 'deliveries' });
+Order.belongsTo(User, { foreignKey: 'courierId', as: 'courier' });
 
 Restaurant.hasMany(Order, { foreignKey: 'restaurantId', as: 'orders' });
 Order.belongsTo(Restaurant, { foreignKey: 'restaurantId', as: 'restaurant' });

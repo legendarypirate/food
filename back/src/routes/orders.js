@@ -14,7 +14,27 @@ const router = Router();
 const include = [
   { model: Restaurant, as: 'restaurant' },
   { model: OrderItem, as: 'items' },
+  {
+    model: User,
+    as: 'courier',
+    attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount'],
+  },
 ];
+
+function courierTrackingPayload(courier) {
+  return {
+    name: courier.name,
+    phone: courier.phone,
+    rating: 4.9,
+    vehicle: 'Хүргэлтийн машин',
+    plateNumber: '',
+    deliveryCount: courier.orderCount || 0,
+    avatarUrl:
+      courier.avatarUrl ||
+      'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&q=80',
+    distanceKm: 1.2,
+  };
+}
 
 function normalizePhone(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
@@ -125,10 +145,50 @@ router.get('/:id', requireAuth, async (req, res, next) => {
   try {
     const order = await Order.findByPk(req.params.id, { include });
     if (!order) return res.status(404).json({ error: 'Not found' });
-    if (req.user?.role !== 'admin' && order.userId !== req.userId) {
+    if (req.user?.role === 'courier' && order.courierId !== req.userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (req.user?.role !== 'admin' && req.user?.role !== 'courier' && order.userId !== req.userId) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     res.json(serializeOrder(order));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch('/:id/courier', requireAuth, async (req, res, next) => {
+  try {
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Зөвхөн админ жолооч хуваарилна' });
+    }
+
+    const courierId = Number(req.body.courierId);
+    if (!courierId) {
+      return res.status(400).json({ error: 'Жолооч сонгоно уу' });
+    }
+
+    const order = await Order.findByPk(req.params.id, { include });
+    if (!order) return res.status(404).json({ error: 'Захиалга олдсонгүй' });
+    if (order.status !== 'active') {
+      return res.status(400).json({ error: 'Дууссан захиалгад жолооч хуваарилахгүй' });
+    }
+
+    const courier = await User.findOne({
+      where: { id: courierId, role: 'courier', isActive: true },
+    });
+    if (!courier) return res.status(404).json({ error: 'Жолооч олдсонгүй' });
+
+    const tracking = ensureTracking(order);
+    tracking.courier = courierTrackingPayload(courier);
+
+    await order.update({
+      courierId: courier.id,
+      tracking,
+    });
+
+    const refreshed = await Order.findByPk(order.id, { include });
+    res.json(serializeOrder(refreshed));
   } catch (err) {
     next(err);
   }

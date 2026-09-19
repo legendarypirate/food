@@ -19,6 +19,9 @@ const User = sequelize.define(
     googleId: { type: DataTypes.STRING, allowNull: true, unique: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: true },
     isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
+    fcmToken: { type: DataTypes.TEXT, allowNull: true },
+    fcmPlatform: { type: DataTypes.STRING, allowNull: true },
+    passwordHash: { type: DataTypes.TEXT, allowNull: true },
   },
   { tableName: 'users', underscored: true },
 );

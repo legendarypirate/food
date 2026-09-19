@@ -17,6 +17,7 @@ const Order = sequelize.define(
     dateLabel: { type: DataTypes.STRING, allowNull: false },
     estimatedMinutes: { type: DataTypes.INTEGER, allowNull: true },
     tracking: { type: DataTypes.JSONB, allowNull: true },
+    courierId: { type: DataTypes.INTEGER, allowNull: true },
   },
   { tableName: 'orders', underscored: true },
 );

@@ -1,11 +1,18 @@
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Truck, User } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { AdminPageHeader } from '@/components/admin-page-header';
 import { AdminPageState } from '@/components/admin-page-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { api, type Order, type OrderAction, type TrackingStep } from '@/lib/api';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  api,
+  type Courier,
+  type Order,
+  type OrderAction,
+  type TrackingStep,
+} from '@/lib/api';
 import { mn } from '@/lib/mn';
 
 const DELIVERY_STEP_LABEL = 'Хүргэлтэнд гарсан';
@@ -38,6 +45,10 @@ function getCurrentStepLabel(order: Order) {
 
 function lineTotal(item: { price: number; quantity: number }) {
   return item.price * item.quantity;
+}
+
+function isPendingOrder(order: Order) {
+  return order.status === 'active';
 }
 
 export function OrdersPage() {
@@ -101,6 +112,16 @@ function OrderCard({
 }) {
   const [updating, setUpdating] = useState(false);
   const [actionError, setActionError] = useState('');
+  const [assignOpen, setAssignOpen] = useState(false);
+  const [couriers, setCouriers] = useState<Courier[]>([]);
+  const [couriersLoading, setCouriersLoading] = useState(false);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+
+  const isPending = isPendingOrder(order);
+  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  const currentStepLabel = getCurrentStepLabel(order);
+  const isDeliveryActive = currentStepLabel === DELIVERY_STEP_LABEL;
+  const assignedCourier = order.courier || order.tracking?.courier;
 
   async function handleAction(e: React.MouseEvent, action: OrderAction) {
     e.stopPropagation();
@@ -116,10 +137,34 @@ function OrderCard({
     }
   }
 
-  const isActive = order.status === 'active';
-  const itemCount = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const currentStepLabel = getCurrentStepLabel(order);
-  const isDeliveryActive = currentStepLabel === DELIVERY_STEP_LABEL;
+  async function openAssignDrawer(e: React.MouseEvent) {
+    e.stopPropagation();
+    setAssignOpen(true);
+    setCouriersLoading(true);
+    setActionError('');
+    try {
+      const list = await api.couriers.list();
+      setCouriers(list.filter((c) => c.isActive));
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : mn.loadError);
+    } finally {
+      setCouriersLoading(false);
+    }
+  }
+
+  async function handleAssignCourier(courierId: number | string) {
+    setAssigningId(String(courierId));
+    setActionError('');
+    try {
+      await api.orders.assignCourier(order.id, courierId);
+      setAssignOpen(false);
+      onRefresh();
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : mn.loadError);
+    } finally {
+      setAssigningId(null);
+    }
+  }
 
   return (
     <Card className="overflow-hidden">
@@ -154,11 +199,69 @@ function OrderCard({
               {currentStepLabel}
             </span>
           </p>
+          {assignedCourier && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {mn.ordersPage.assignedCourier}:{' '}
+              <span className="font-medium text-foreground">{assignedCourier.name}</span>
+              {'phone' in assignedCourier && assignedCourier.phone
+                ? ` • ${assignedCourier.phone}`
+                : ''}
+            </p>
+          )}
         </div>
         <div className="flex shrink-0 items-center pt-1 text-muted-foreground">
           {expanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
         </div>
       </button>
+
+      {isPending && (
+        <div className="space-y-2 border-t bg-muted/20 px-4 py-3">
+          {actionError && <p className="text-sm text-destructive">{actionError}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={updating}
+              onClick={(e) => handleAction(e, 'preparing')}
+            >
+              {mn.orderActions.preparing}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={updating}
+              className={
+                isDeliveryActive
+                  ? 'border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100'
+                  : 'border-blue-200 text-blue-700 hover:bg-blue-50'
+              }
+              onClick={(e) => handleAction(e, 'out_for_delivery')}
+            >
+              {mn.orderActions.out_for_delivery}
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={updating}
+              onClick={openAssignDrawer}
+            >
+              <Truck className="mr-1.5 h-4 w-4" />
+              {mn.ordersPage.assignCourier}
+            </Button>
+            <Button size="sm" disabled={updating} onClick={(e) => handleAction(e, 'delivered')}>
+              {mn.orderActions.delivered}
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              disabled={updating}
+              onClick={(e) => handleAction(e, 'cancelled')}
+            >
+              {mn.orderActions.cancelled}
+            </Button>
+          </div>
+        </div>
+      )}
 
       {expanded && (
         <CardContent className="space-y-4 border-t pt-4">
@@ -228,53 +331,50 @@ function OrderCard({
               </div>
             </div>
           )}
-
-          {actionError && (
-            <p className="text-sm text-destructive">{actionError}</p>
-          )}
-
-          {isActive && (
-            <div className="flex flex-wrap gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={updating}
-                onClick={(e) => handleAction(e, 'preparing')}
-              >
-                {mn.orderActions.preparing}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={updating}
-                className={
-                  isDeliveryActive
-                    ? 'border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100'
-                    : 'border-blue-200 text-blue-700 hover:bg-blue-50'
-                }
-                onClick={(e) => handleAction(e, 'out_for_delivery')}
-              >
-                {mn.orderActions.out_for_delivery}
-              </Button>
-              <Button
-                size="sm"
-                disabled={updating}
-                onClick={(e) => handleAction(e, 'delivered')}
-              >
-                {mn.orderActions.delivered}
-              </Button>
-              <Button
-                size="sm"
-                variant="destructive"
-                disabled={updating}
-                onClick={(e) => handleAction(e, 'cancelled')}
-              >
-                {mn.orderActions.cancelled}
-              </Button>
-            </div>
-          )}
         </CardContent>
       )}
+
+      <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{mn.ordersPage.selectCourier}</DialogTitle>
+          </DialogHeader>
+          <p className="mb-4 text-sm text-muted-foreground">
+            {order.orderNumber} • {order.restaurantName}
+          </p>
+
+          {couriersLoading ? (
+            <p className="text-sm text-muted-foreground">{mn.loading}</p>
+          ) : couriers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{mn.ordersPage.noCouriers}</p>
+          ) : (
+            <div className="space-y-2">
+              {couriers.map((courier) => (
+                <button
+                  key={courier.id}
+                  type="button"
+                  disabled={assigningId !== null}
+                  onClick={() => handleAssignCourier(courier.id)}
+                  className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/60 disabled:opacity-60"
+                >
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium">{courier.name}</p>
+                    <p className="text-sm text-muted-foreground">{courier.phone}</p>
+                  </div>
+                  <span className="text-sm font-medium text-primary">
+                    {assigningId === String(courier.id)
+                      ? mn.ordersPage.assigning
+                      : mn.ordersPage.assign}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

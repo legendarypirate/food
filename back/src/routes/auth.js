@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { User } from '../models/index.js';
 import { issueToken, requireAuth, revokeToken } from '../middleware/auth.js';
 import { serializeUser } from '../utils/serializers.js';
+import { verifyPassword } from '../utils/password.js';
 
 const router = Router();
 
@@ -22,20 +23,33 @@ function formatPhone(phone) {
   return phone;
 }
 
-router.post('/login', (req, res) => {
-  const phone = normalizePhone(req.body.phone);
-  const password = String(req.body.password || '');
+router.post('/login', async (req, res, next) => {
+  try {
+    const phone = normalizePhone(req.body.phone);
+    const password = String(req.body.password || '');
 
-  const demoPhone = normalizePhone(DEMO_ADMIN.phone);
-  if (phone === demoPhone && password === DEMO_ADMIN.password) {
-    return res.json({
-      ok: true,
-      token: 'demo-admin-token',
-      user: { id: 1, name: 'Админ', phone: '99001122', role: 'admin' },
+    const demoPhone = normalizePhone(DEMO_ADMIN.phone);
+    if (phone === demoPhone && password === DEMO_ADMIN.password) {
+      return res.json({
+        ok: true,
+        token: 'demo-admin-token',
+        user: { id: 1, name: 'Админ', phone: '99001122', role: 'admin' },
+      });
+    }
+
+    const couriers = await User.findAll({
+      where: { role: 'courier', isActive: true },
     });
-  }
+    const courier = couriers.find((c) => normalizePhone(c.phone) === phone);
+    if (courier?.passwordHash && verifyPassword(password, courier.passwordHash)) {
+      const token = issueToken(courier.id);
+      return res.json({ ok: true, token, user: serializeUser(courier) });
+    }
 
-  res.status(401).json({ error: 'Утас эсвэл нууц үг буруу байна' });
+    res.status(401).json({ error: 'Утас эсвэл нууц үг буруу байна' });
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.post('/google', async (req, res, next) => {
@@ -107,9 +121,30 @@ router.patch('/me', requireAuth, async (req, res, next) => {
     if (req.body.name) updates.name = req.body.name;
     if (req.body.phone) updates.phone = formatPhone(req.body.phone);
     if (req.body.deliveryAddress) updates.deliveryAddress = req.body.deliveryAddress.trim();
+    if (req.body.fcmToken !== undefined) {
+      updates.fcmToken = req.body.fcmToken ? String(req.body.fcmToken).trim() : null;
+    }
+    if (req.body.fcmPlatform !== undefined) {
+      updates.fcmPlatform = req.body.fcmPlatform ? String(req.body.fcmPlatform).trim() : null;
+    }
 
     await user.update(updates);
     res.json(serializeUser(user));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post('/fcm-token', requireAuth, async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+    if (!user) return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
+
+    const fcmToken = req.body.fcmToken ? String(req.body.fcmToken).trim() : null;
+    const fcmPlatform = req.body.platform ? String(req.body.platform).trim() : null;
+
+    await user.update({ fcmToken, fcmPlatform });
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }

@@ -1,4 +1,5 @@
 import {
+  Bell,
   CreditCard,
   LayoutDashboard,
   LogOut,
@@ -6,6 +7,7 @@ import {
   Soup,
   Store,
   Tags,
+  Truck,
   Users,
 } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
@@ -19,8 +21,10 @@ const nav = [
   { to: '/admin/restaurants', label: mn.pages.restaurants, icon: Store },
   { to: '/admin/dishes', label: mn.pages.dishes, icon: Soup },
   { to: '/admin/orders', label: mn.pages.orders, icon: Receipt },
+  { to: '/admin/couriers', label: mn.pages.couriers, icon: Truck },
   { to: '/admin/payments', label: mn.pages.payments, icon: CreditCard },
   { to: '/admin/categories', label: mn.pages.categories, icon: Tags },
+  { to: '/admin/notifications', label: mn.pages.notifications, icon: Bell },
 ] as const;
 
 export function AdminLayout() {

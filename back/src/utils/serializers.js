@@ -43,6 +43,7 @@ export function serializeDish(d) {
 export function serializeOrder(o) {
   const json = o.toJSON ? o.toJSON() : o;
   const restaurant = json.restaurant || json.Restaurant;
+  const courier = json.courier || json.Courier;
   return {
     id: String(json.id),
     orderNumber: json.orderNumber,
@@ -60,6 +61,15 @@ export function serializeOrder(o) {
     deliveryAddress: json.deliveryAddress,
     estimatedMinutes: json.estimatedMinutes,
     tracking: json.tracking,
+    courierId: json.courierId ? String(json.courierId) : null,
+    courier: courier
+      ? {
+          id: String(courier.id),
+          name: courier.name,
+          phone: courier.phone,
+          avatarUrl: courier.avatarUrl || null,
+        }
+      : null,
   };
 }
 

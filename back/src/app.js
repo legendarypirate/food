@@ -4,6 +4,7 @@ import express from 'express';
 import sequelize from './config/database.js';
 import './models/index.js';
 import apiRoutes from './routes/index.js';
+import { initPushNotifications } from './services/pushNotification.js';
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -45,6 +46,7 @@ app.use((err, _req, res, _next) => {
 });
 
 async function start() {
+  initPushNotifications();
   await sequelize.authenticate();
   await sequelize.sync({ alter: true });
   app.listen(port, host, () => {

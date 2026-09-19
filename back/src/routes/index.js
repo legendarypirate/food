@@ -6,6 +6,9 @@ import orders from './orders.js';
 import restaurants from './restaurants.js';
 import users from './users.js';
 import payments from './payments.js';
+import notifications from './notifications.js';
+import couriers from './couriers.js';
+import courierApp from './courierApp.js';
 
 const router = Router();
 
@@ -20,5 +23,8 @@ router.use('/dishes', dishes);
 router.use('/orders', orders);
 router.use('/users', users);
 router.use('/payments', payments);
+router.use('/notifications', notifications);
+router.use('/couriers', couriers);
+router.use('/courier', courierApp);
 
 export default router;

@@ -35,6 +35,14 @@ export const api = {
       request<Category>(`/categories/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     remove: (id: number) => request<void>(`/categories/${id}`, { method: 'DELETE' }),
   },
+  couriers: {
+    list: () => request<Courier[]>('/couriers'),
+    create: (body: { name: string; phone: string; password: string; isActive?: boolean }) =>
+      request<Courier>('/couriers', { method: 'POST', body: JSON.stringify(body) }),
+    update: (id: number | string, body: Partial<{ name: string; phone: string; password: string; isActive: boolean }>) =>
+      request<Courier>(`/couriers/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+    remove: (id: number | string) => request<void>(`/couriers/${id}`, { method: 'DELETE' }),
+  },
   users: {
     list: () => request<User[]>('/users'),
     create: (body: Partial<User>) =>
@@ -78,6 +86,28 @@ export const api = {
         method: 'PATCH',
         body: JSON.stringify({ action }),
       }),
+    assignCourier: (id: string, courierId: number | string) =>
+      request<Order>(`/orders/${id}/courier`, {
+        method: 'PATCH',
+        body: JSON.stringify({ courierId }),
+      }),
+  },
+  notifications: {
+    status: () =>
+      request<{ configured: boolean; registeredDevices: number }>('/notifications/status'),
+    send: (body: {
+      title: string;
+      body: string;
+      target: 'all' | 'user';
+      type?: 'promo' | 'system' | 'order';
+      userId?: number;
+    }) =>
+      request<{
+        ok: boolean;
+        attempted: number;
+        successCount: number;
+        failureCount: number;
+      }>('/notifications/send', { method: 'POST', body: JSON.stringify(body) }),
   },
   payments: {
     list: () => request<QPayPayment[]>('/payments'),
@@ -131,6 +161,14 @@ export type Dish = {
   isActive: boolean;
 };
 
+export type Courier = {
+  id: number | string;
+  name: string;
+  phone: string;
+  role: 'courier';
+  isActive: boolean;
+};
+
 export type User = {
   id: number | string;
   name: string;
@@ -171,6 +209,13 @@ export type TrackingStep = {
   subtitle?: string;
 };
 
+export type OrderCourier = {
+  id: string;
+  name: string;
+  phone: string;
+  avatarUrl: string | null;
+};
+
 export type Order = {
   id: string;
   orderNumber: string;
@@ -180,7 +225,13 @@ export type Order = {
   date: string;
   deliveryAddress: string;
   items: { name: string; quantity: number; price: number }[];
+  courierId?: string | null;
+  courier?: OrderCourier | null;
   tracking?: {
     steps: TrackingStep[];
+    courier?: {
+      name: string;
+      phone?: string;
+    };
   } | null;
 };
