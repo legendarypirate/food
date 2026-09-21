@@ -3,6 +3,15 @@ import { User } from '../models/index.js';
 import { issueToken, requireAuth, revokeToken } from '../middleware/auth.js';
 import { serializeUser } from '../utils/serializers.js';
 import { verifyPassword } from '../utils/password.js';
+import { formatPhone, isValidMnPhone, normalizePhone } from '../utils/phone.js';
+import {
+  consumeVerifySession,
+  createVerifyMnSession,
+  getRememberedSession,
+  getVerifyMnSession,
+  pruneVerifySessions,
+  rememberVerifySession,
+} from '../services/verifyMn.js';
 
 const router = Router();
 
@@ -11,16 +20,42 @@ const DEMO_ADMIN = {
   password: 'admin123',
 };
 
-function normalizePhone(phone) {
-  const digits = String(phone || '').replace(/\D/g, '');
-  if (digits.startsWith('976') && digits.length === 11) return digits.slice(3);
-  return digits;
+async function findUserByPhone(phone, role) {
+  const digits = normalizePhone(phone);
+  const where = { isActive: true };
+  if (role) where.role = role;
+  const users = await User.findAll({ where });
+  return users.find((u) => normalizePhone(u.phone) === digits) || null;
 }
 
-function formatPhone(phone) {
+async function resolveVerifiedCustomer(phone) {
   const digits = normalizePhone(phone);
-  if (digits.length === 8) return `+976 ${digits.slice(0, 4)}-${digits.slice(4)}`;
-  return phone;
+  const courier = await findUserByPhone(digits, 'courier');
+  if (courier) {
+    const err = new Error('Энэ дугаар жолоочийн бүртгэлтэй. Жолоочийн апп ашиглана уу');
+    err.statusCode = 403;
+    throw err;
+  }
+
+  let user = await findUserByPhone(digits, 'customer');
+  if (!user) {
+    user = await User.findOne({ where: { email: `phone-${digits}@foody.internal` } });
+  }
+  if (!user) {
+    user = await User.create({
+      name: `Хэрэглэгч ${digits.slice(-4)}`,
+      phone: formatPhone(digits),
+      email: `phone-${digits}@foody.internal`,
+      role: 'customer',
+      isActive: true,
+    });
+  }
+  return user;
+}
+
+function sendAuthError(res, err) {
+  const status = err.statusCode || 500;
+  return res.status(status).json({ error: err.message || 'Алдаа гарлаа' });
 }
 
 router.post('/login', async (req, res, next) => {
@@ -84,6 +119,76 @@ router.post('/google', async (req, res, next) => {
     res.json({ ok: true, token, user: serializeUser(user) });
   } catch (err) {
     next(err);
+  }
+});
+
+router.post('/verify/start', async (req, res, next) => {
+  try {
+    pruneVerifySessions();
+    const phone = normalizePhone(req.body.phone);
+    if (!isValidMnPhone(phone)) {
+      return res.status(400).json({ error: 'Монгол утасны дугаар буруу (8 орон, 6-9-өөр эхэлнэ)' });
+    }
+
+    const courier = await findUserByPhone(phone, 'courier');
+    if (courier) {
+      return res.status(403).json({
+        error: 'Энэ дугаар жолоочийн бүртгэлтэй. Жолоочийн апп ашиглана уу',
+      });
+    }
+
+    const session = await createVerifyMnSession(phone);
+    rememberVerifySession(session.sessionId, { phone, role: 'customer' });
+
+    const displayInstruction =
+      session.displayInstruction ||
+      `Та өөрийн ${phone} дугаараас 144773 дугаарт "${session.text}" гэж SMS илгээнэ үү. 2 SIM-тэй бол зөв SIM-ээ сонгоно уу.`;
+
+    res.json({
+      sessionId: session.sessionId,
+      phone: session.phone,
+      shortcode: session.shortcode,
+      text: session.text,
+      smsUri: session.smsUri,
+      displayInstruction,
+      expiresAt: session.expiresAt,
+    });
+  } catch (err) {
+    sendAuthError(res, err);
+  }
+});
+
+router.get('/verify/:sessionId', async (req, res, next) => {
+  try {
+    const sessionId = String(req.params.sessionId || '');
+    const local = getRememberedSession(sessionId);
+    if (!local || local.role !== 'customer') {
+      return res.status(404).json({ error: 'SESSION олдсонгүй' });
+    }
+
+    const remote = await getVerifyMnSession(sessionId);
+    const sessionStatus = remote.sessionStatus || 'PENDING';
+
+    if (sessionStatus !== 'VERIFIED') {
+      return res.json({
+        sessionId,
+        sessionStatus,
+        expiresAt: remote.expiresAt || null,
+      });
+    }
+
+    const user = await resolveVerifiedCustomer(local.phone);
+    consumeVerifySession(sessionId);
+    const token = issueToken(user.id);
+    res.json({
+      sessionId,
+      sessionStatus: 'VERIFIED',
+      verifiedAt: remote.verifiedAt || null,
+      token,
+      user: serializeUser(user),
+    });
+  } catch (err) {
+    sendAuthError(res, err);
   }
 });
 
