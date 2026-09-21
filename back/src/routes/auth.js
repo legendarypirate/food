@@ -30,16 +30,13 @@ async function findUserByPhone(phone, role) {
 
 async function resolveVerifiedCustomer(phone) {
   const digits = normalizePhone(phone);
-  const courier = await findUserByPhone(digits, 'courier');
-  if (courier) {
-    const err = new Error('Энэ дугаар жолоочийн бүртгэлтэй. Жолоочийн апп ашиглана уу');
-    err.statusCode = 403;
-    throw err;
-  }
 
   let user = await findUserByPhone(digits, 'customer');
   if (!user) {
     user = await User.findOne({ where: { email: `phone-${digits}@foody.internal` } });
+  }
+  if (user?.role === 'courier') {
+    user = null;
   }
   if (!user) {
     user = await User.create({
@@ -128,13 +125,6 @@ router.post('/verify/start', async (req, res, next) => {
     const phone = normalizePhone(req.body.phone);
     if (!isValidMnPhone(phone)) {
       return res.status(400).json({ error: 'Монгол утасны дугаар буруу (8 орон, 6-9-өөр эхэлнэ)' });
-    }
-
-    const courier = await findUserByPhone(phone, 'courier');
-    if (courier) {
-      return res.status(403).json({
-        error: 'Энэ дугаар жолоочийн бүртгэлтэй. Жолоочийн апп ашиглана уу',
-      });
     }
 
     const session = await createVerifyMnSession(phone);
