@@ -22,6 +22,9 @@ const User = sequelize.define(
     fcmToken: { type: DataTypes.TEXT, allowNull: true },
     fcmPlatform: { type: DataTypes.STRING, allowNull: true },
     passwordHash: { type: DataTypes.TEXT, allowNull: true },
+    lastLat: { type: DataTypes.DOUBLE, allowNull: true },
+    lastLng: { type: DataTypes.DOUBLE, allowNull: true },
+    lastLocationAt: { type: DataTypes.DATE, allowNull: true },
   },
   { tableName: 'users', underscored: true },
 );

@@ -1,3 +1,5 @@
+import { getCachedLocation, locationFromUser } from '../services/driverLocation.js';
+
 export function serializeRestaurant(r) {
   const json = r.toJSON ? r.toJSON() : r;
   const categories = (json.Categories || json.categories || []).map((c) => c.name);
@@ -62,6 +64,9 @@ export function serializeOrder(o) {
     estimatedMinutes: json.estimatedMinutes,
     tracking: json.tracking,
     courierId: json.courierId ? String(json.courierId) : null,
+    assignedToDriver: Boolean(json.courierId),
+    driverLocation:
+      getCachedLocation(json.courierId) || locationFromUser(courier) || null,
     courier: courier
       ? {
           id: String(courier.id),

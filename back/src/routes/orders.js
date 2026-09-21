@@ -8,6 +8,7 @@ import {
   setTrackingStep,
 } from '../utils/orderTracking.js';
 import { serializeOrder } from '../utils/serializers.js';
+import { canWatchOrder, getCourierLocation } from '../services/driverLocation.js';
 
 const router = Router();
 
@@ -17,7 +18,7 @@ const include = [
   {
     model: User,
     as: 'courier',
-    attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount'],
+    attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount', 'lastLat', 'lastLng', 'lastLocationAt'],
   },
 ];
 
@@ -136,6 +137,22 @@ router.post('/', requireAuth, async (req, res, next) => {
 
     const full = await Order.findByPk(order.id, { include });
     res.status(201).json(serializeOrder(full));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/:id/driver-location', requireAuth, async (req, res, next) => {
+  try {
+    const order = await canWatchOrder(req.user, req.params.id);
+    if (!order) {
+      return res.status(403).json({ error: 'Жолоочийн байршил харах боломжгүй' });
+    }
+    const location = await getCourierLocation(order.courierId);
+    if (!location) {
+      return res.json({ lat: null, lng: null, updatedAt: null });
+    }
+    res.json(location);
   } catch (err) {
     next(err);
   }

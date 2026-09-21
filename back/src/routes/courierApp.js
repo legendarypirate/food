@@ -4,6 +4,7 @@ import { Order, OrderItem, Restaurant, User } from '../models/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { completeTracking, ensureTracking } from '../utils/orderTracking.js';
 import { serializeOrder } from '../utils/serializers.js';
+import { isValidCoord, updateCourierLocation } from '../services/driverLocation.js';
 
 const router = Router();
 
@@ -13,7 +14,7 @@ const include = [
   {
     model: User,
     as: 'courier',
-    attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount'],
+    attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount', 'lastLat', 'lastLng', 'lastLocationAt'],
   },
 ];
 
@@ -23,6 +24,20 @@ function requireCourier(req, res, next) {
   }
   next();
 }
+
+router.post('/location', requireAuth, requireCourier, async (req, res, next) => {
+  try {
+    const lat = Number(req.body.lat);
+    const lng = Number(req.body.lng);
+    if (!isValidCoord(lat, lng)) {
+      return res.status(400).json({ error: 'Байршлын координат буруу байна' });
+    }
+    const location = await updateCourierLocation(req.userId, lat, lng);
+    res.json(location);
+  } catch (err) {
+    next(err);
+  }
+});
 
 router.get('/orders', requireAuth, requireCourier, async (req, res, next) => {
   try {

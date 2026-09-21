@@ -33,6 +33,20 @@ export function revokeToken(token) {
   if (token) revokedTokens.add(token);
 }
 
+export function parseAuthToken(token) {
+  if (!token) return null;
+  if (token === 'demo-admin-token') return 1;
+  return verifySignedToken(token);
+}
+
+export async function resolveUserFromToken(token) {
+  const userId = parseAuthToken(token);
+  if (!userId) return null;
+  const user = await User.findByPk(userId);
+  if (!user || !user.isActive) return null;
+  return user;
+}
+
 export function requireAdmin(req, res, next) {
   if (req.user?.role !== 'admin') {
     return res.status(403).json({ error: 'Админ эрх шаардлагатай' });
@@ -48,19 +62,14 @@ export async function requireAuth(req, res, next) {
     }
     const token = header.slice(7);
     if (token === 'demo-admin-token') {
-      req.user = { id: 1, role: 'admin' };
-      req.userId = 1;
+      const user = await resolveUserFromToken(token);
+      req.user = user || { id: 1, role: 'admin' };
+      req.userId = req.user.id;
       return next();
     }
-
-    const userId = verifySignedToken(token);
-    if (!userId) {
+    const user = await resolveUserFromToken(token);
+    if (!user) {
       return res.status(401).json({ error: 'Хүчинтэй бус token' });
-    }
-
-    const user = await User.findByPk(userId);
-    if (!user || !user.isActive) {
-      return res.status(401).json({ error: 'Хэрэглэгч олдсонгүй' });
     }
     req.user = user;
     req.userId = user.id;

@@ -1,10 +1,13 @@
 import 'dotenv/config';
+import http from 'node:http';
 import cors from 'cors';
 import express from 'express';
 import sequelize from './config/database.js';
 import './models/index.js';
 import apiRoutes from './routes/index.js';
 import { initPushNotifications } from './services/pushNotification.js';
+import { attachIo } from './services/driverLocation.js';
+import { initSocket } from './socket.js';
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -49,7 +52,12 @@ async function start() {
   initPushNotifications();
   await sequelize.authenticate();
   await sequelize.sync({ alter: true });
-  app.listen(port, host, () => {
+
+  const server = http.createServer(app);
+  const io = initSocket(server);
+  attachIo(io);
+
+  server.listen(port, host, () => {
     console.log(`foody API running on http://${host}:${port}`);
   });
 }
