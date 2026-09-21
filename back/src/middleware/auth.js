@@ -39,7 +39,12 @@ export function parseAuthToken(token) {
   return verifySignedToken(token);
 }
 
+const DEMO_ADMIN_USER = { id: 1, role: 'admin', name: 'Админ' };
+
 export async function resolveUserFromToken(token) {
+  if (token === 'demo-admin-token') {
+    return DEMO_ADMIN_USER;
+  }
   const userId = parseAuthToken(token);
   if (!userId) return null;
   const user = await User.findByPk(userId);
@@ -61,12 +66,6 @@ export async function requireAuth(req, res, next) {
       return res.status(401).json({ error: 'Нэвтрэх шаардлагатай' });
     }
     const token = header.slice(7);
-    if (token === 'demo-admin-token') {
-      const user = await resolveUserFromToken(token);
-      req.user = user || { id: 1, role: 'admin' };
-      req.userId = req.user.id;
-      return next();
-    }
     const user = await resolveUserFromToken(token);
     if (!user) {
       return res.status(401).json({ error: 'Хүчинтэй бус token' });

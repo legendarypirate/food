@@ -14,7 +14,7 @@ const include = [
   {
     model: User,
     as: 'courier',
-    attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount', 'lastLat', 'lastLng', 'lastLocationAt'],
+    attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount'],
   },
 ];
 
