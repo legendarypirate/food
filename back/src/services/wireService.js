@@ -26,6 +26,7 @@ export function getAllowedOperators() {
 async function wireRequest(method, path, { body, idempotencyKey } = {}) {
   const headers = {
     Authorization: `Bearer ${getApiKey()}`,
+    Accept: 'application/json',
   };
 
   if (idempotencyKey) {
@@ -35,8 +36,8 @@ async function wireRequest(method, path, { body, idempotencyKey } = {}) {
   const init = { method, headers };
 
   if (body) {
-    headers['Content-Type'] = 'application/x-www-form-urlencoded';
-    init.body = new URLSearchParams(body).toString();
+    headers['Content-Type'] = 'application/json';
+    init.body = JSON.stringify(body);
   }
 
   const res = await fetch(`${WIRE_API_BASE}${path}`, init);
@@ -63,45 +64,15 @@ async function wireRequest(method, path, { body, idempotencyKey } = {}) {
 }
 
 export async function createPaymentIntent({ amount, description, reference, allowedOperators }) {
-  const body = new URLSearchParams();
-  body.set('amount', String(amount));
-  body.set('currency', 'MNT');
-  body.set('description', description);
-  for (const operator of allowedOperators) {
-    body.append('allowed_operators[]', operator);
-  }
-
-  const headers = {
-    Authorization: `Bearer ${getApiKey()}`,
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Idempotency-Key': reference,
-  };
-
-  const res = await fetch(`${WIRE_API_BASE}/payment_intents`, {
-    method: 'POST',
-    headers,
-    body: body.toString(),
+  return wireRequest('POST', '/payment_intents', {
+    body: {
+      amount: Number(amount),
+      currency: 'MNT',
+      description,
+      allowed_operators: allowedOperators,
+    },
+    idempotencyKey: reference,
   });
-
-  const text = await res.text();
-  let data = {};
-  if (text) {
-    try {
-      data = JSON.parse(text);
-    } catch {
-      data = { message: text };
-    }
-  }
-
-  if (!res.ok) {
-    const message = data?.error?.message || data?.message || text || `Wire API ${res.status}`;
-    const err = new Error(message);
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
-
-  return data;
 }
 
 export async function createCheckoutSession({ paymentIntentId, reference }) {
