@@ -19,6 +19,7 @@ const QPayPayment = sequelize.define(
     callbackUrl: { type: DataTypes.TEXT, allowNull: true },
     paidAt: { type: DataTypes.DATE, allowNull: true },
     expiresAt: { type: DataTypes.DATE, allowNull: true },
+    metadata: { type: DataTypes.JSONB, allowNull: true },
     isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
   },
   { tableName: 'qpay_payments', underscored: true },

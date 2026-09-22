@@ -113,6 +113,8 @@ export function serializeQPayPayment(p) {
     callbackUrl: json.callbackUrl,
     paidAt: json.paidAt,
     expiresAt: json.expiresAt,
+    checkoutUrl: json.qpayShortUrl,
+    metadata: json.metadata || null,
     isActive: json.isActive,
     createdAt: json.createdAt,
   };

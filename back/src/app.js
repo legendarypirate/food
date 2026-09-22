@@ -39,6 +39,16 @@ app.use(
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   }),
 );
+
+app.use(
+  '/api/payments/webhook',
+  express.raw({ type: 'application/json' }),
+  (req, _res, next) => {
+    req.rawBody = req.body?.toString('utf8') || '';
+    next();
+  },
+);
+
 app.use(express.json());
 
 app.use('/api', apiRoutes);
