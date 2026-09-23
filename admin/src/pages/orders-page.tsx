@@ -13,6 +13,7 @@ import {
   type OrderAction,
   type TrackingStep,
 } from '@/lib/api';
+import { formatUbRelativeDate } from '@/lib/datetime';
 import { mn } from '@/lib/mn';
 
 const DELIVERY_STEP_LABEL = 'Хүргэлтэнд гарсан';
@@ -53,21 +54,6 @@ function isPendingOrder(order: Order) {
 
 function fulfillmentLabel(type?: Order['fulfillmentType']) {
   return type === 'pickup' ? mn.preOrder.pickup : mn.preOrder.delivery;
-}
-
-function formatScheduledDate(date?: string | null) {
-  if (!date) return '';
-  const [year, month, day] = date.split('-').map(Number);
-  const scheduled = new Date(year, month - 1, day);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  scheduled.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (scheduled.getTime() === today.getTime()) return 'Өнөөдөр';
-  if (scheduled.getTime() === tomorrow.getTime()) return 'Маргааш';
-  return `${month}-р сарын ${day}`;
 }
 
 export function OrdersPage() {
@@ -220,8 +206,9 @@ function OrderCard({
           </p>
           {order.isPreOrder && order.scheduledDate && order.scheduledTime && (
             <p className="mt-1 text-sm font-medium text-primary">
-              {mn.preOrder.scheduledFor}: {formatScheduledDate(order.scheduledDate)}{' '}
-              {order.scheduledTime} • {fulfillmentLabel(order.fulfillmentType)}
+              {mn.preOrder.scheduledFor}:{' '}
+              {formatUbRelativeDate(order.scheduledDate, order.scheduledTime)} •{' '}
+              {fulfillmentLabel(order.fulfillmentType)}
             </p>
           )}
           <p className="mt-1 text-sm font-medium">
@@ -305,7 +292,7 @@ function OrderCard({
                 <p>
                   <span className="text-muted-foreground">{mn.preOrder.scheduledFor}: </span>
                   <span className="font-medium text-foreground">
-                    {formatScheduledDate(order.scheduledDate)} {order.scheduledTime}
+                    {formatUbRelativeDate(order.scheduledDate, order.scheduledTime)}
                   </span>
                 </p>
                 <p>

@@ -8,6 +8,7 @@ import {
 import { createInitialTracking } from '../utils/orderTracking.js';
 import { formatScheduledLabel } from '../utils/preOrder.js';
 import { serializeOrder } from '../utils/serializers.js';
+import { formatUbDateLabel } from '../utils/ulaanbaatarTime.js';
 import { retrievePaymentIntent } from './wireService.js';
 
 const include = [
@@ -24,13 +25,6 @@ function normalizePhone(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
   if (digits.startsWith('976') && digits.length === 11) return digits.slice(3);
   return digits;
-}
-
-function formatDateLabel() {
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  return `Өнөөдөр ${h}:${m}`;
 }
 
 function formatPhoneForProfile(phone) {
@@ -81,8 +75,8 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
       : String(deliveryAddress || '').trim();
 
   const dateLabel = isPreOrder
-    ? formatScheduledLabel(scheduledDate, scheduledTime) || formatDateLabel()
-    : formatDateLabel();
+    ? formatScheduledLabel(scheduledDate, scheduledTime) || formatUbDateLabel()
+    : formatUbDateLabel();
 
   const orderNumber = payment.senderInvoiceNo;
   const order = await Order.create({

@@ -1,3 +1,5 @@
+import { formatUbTime } from './ulaanbaatarTime.js';
+
 const DEFAULT_STEPS = [
   { label: 'Баталгаажсан', icon: 'check' },
   { label: 'Бэлтгэгдсэн', icon: 'soup_kitchen' },
@@ -6,7 +8,7 @@ const DEFAULT_STEPS = [
 ];
 
 function nowTime() {
-  return new Date().toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit' });
+  return formatUbTime(new Date());
 }
 
 export function ensureTracking(order) {

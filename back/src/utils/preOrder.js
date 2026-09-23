@@ -1,25 +1,20 @@
+import {
+  addCalendarDays,
+  formatUbDate,
+  formatUbRelativeDate,
+} from './ulaanbaatarTime.js';
+
 export function validateScheduledDate(dateStr) {
   if (!dateStr || typeof dateStr !== 'string') return false;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false;
 
   const [year, month, day] = dateStr.split('-').map(Number);
-  const scheduled = new Date(year, month - 1, day);
-  if (
-    scheduled.getFullYear() !== year ||
-    scheduled.getMonth() !== month - 1 ||
-    scheduled.getDate() !== day
-  ) {
-    return false;
-  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  scheduled.setHours(0, 0, 0, 0);
+  const todayStr = formatUbDate(new Date());
+  const maxStr = addCalendarDays(todayStr, 14);
 
-  const maxDate = new Date(today);
-  maxDate.setDate(maxDate.getDate() + 14);
-
-  return scheduled >= today && scheduled <= maxDate;
+  return dateStr >= todayStr && dateStr <= maxStr;
 }
 
 export function validateScheduledTime(timeStr) {
@@ -34,27 +29,7 @@ export function validateFulfillmentType(type) {
 }
 
 export function formatScheduledLabel(scheduledDate, scheduledTime) {
-  if (!scheduledDate || !scheduledTime) return null;
-
-  const [year, month, day] = scheduledDate.split('-').map(Number);
-  const scheduled = new Date(year, month - 1, day);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  scheduled.setHours(0, 0, 0, 0);
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  let datePart;
-  if (scheduled.getTime() === today.getTime()) {
-    datePart = 'Өнөөдөр';
-  } else if (scheduled.getTime() === tomorrow.getTime()) {
-    datePart = 'Маргааш';
-  } else {
-    datePart = `${month}-р сарын ${day}`;
-  }
-
-  return `${datePart} ${scheduledTime}`;
+  return formatUbRelativeDate(scheduledDate, scheduledTime);
 }
 
 export function fulfillmentTypeLabel(type) {

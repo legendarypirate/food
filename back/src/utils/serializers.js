@@ -1,4 +1,6 @@
 import { getCachedLocation, locationFromUser } from '../services/driverLocation.js';
+import { formatScheduledLabel } from './preOrder.js';
+import { formatOrderPlacedLabel } from './ulaanbaatarTime.js';
 
 export function serializeRestaurant(r) {
   const json = r.toJSON ? r.toJSON() : r;
@@ -59,7 +61,12 @@ export function serializeOrder(o) {
     })),
     total: json.total,
     status: json.status,
-    date: json.dateLabel,
+    date:
+      json.isPreOrder && json.scheduledDate && json.scheduledTime
+        ? formatScheduledLabel(json.scheduledDate, json.scheduledTime) || json.dateLabel
+        : json.createdAt
+          ? formatOrderPlacedLabel(json.createdAt)
+          : json.dateLabel,
     deliveryAddress: json.deliveryAddress,
     fulfillmentType: json.fulfillmentType || 'delivery',
     scheduledDate: json.scheduledDate || null,

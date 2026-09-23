@@ -14,6 +14,7 @@ import {
   validatePreOrder,
 } from '../utils/preOrder.js';
 import { serializeOrder } from '../utils/serializers.js';
+import { formatUbDateLabel } from '../utils/ulaanbaatarTime.js';
 import { canWatchOrder, getCourierLocation } from '../services/driverLocation.js';
 
 const router = Router();
@@ -56,13 +57,6 @@ function validateMnPhone(phone) {
 
 function validateAddress(address) {
   return typeof address === 'string' && address.trim().length >= 10;
-}
-
-function formatDateLabel() {
-  const now = new Date();
-  const h = String(now.getHours()).padStart(2, '0');
-  const m = String(now.getMinutes()).padStart(2, '0');
-  return `Өнөөдөр ${h}:${m}`;
 }
 
 router.get('/', requireAuth, async (req, res, next) => {
@@ -132,8 +126,9 @@ router.post('/', requireAuth, async (req, res, next) => {
         : deliveryAddress.trim();
 
     const dateLabel = preOrder.isPreOrder
-      ? formatScheduledLabel(preOrder.scheduledDate, preOrder.scheduledTime) || formatDateLabel()
-      : formatDateLabel();
+      ? formatScheduledLabel(preOrder.scheduledDate, preOrder.scheduledTime) ||
+        formatUbDateLabel()
+      : formatUbDateLabel();
 
     const order = await Order.create({
       orderNumber,
