@@ -96,14 +96,16 @@ router.post('/', requireAuth, async (req, res, next) => {
     if (!validateMnPhone(phone)) {
       return res.status(400).json({ error: 'Монгол утасны дугаар буруу (8 орон, 6-9-өөр эхэлнэ)' });
     }
-    if (!validateFulfillmentType(preOrder.fulfillmentType)) {
+    if (preOrder.isPreOrder && !validateFulfillmentType(preOrder.fulfillmentType)) {
       return res.status(400).json({ error: 'Хүргэлт эсвэл очиж авах сонголт буруу байна' });
     }
     const preOrderError = validatePreOrder(preOrder);
     if (preOrderError) {
       return res.status(400).json({ error: preOrderError });
     }
-    if (preOrder.fulfillmentType === 'delivery' && !validateAddress(deliveryAddress)) {
+    const needsAddress =
+      !preOrder.isPreOrder || preOrder.fulfillmentType === 'delivery';
+    if (needsAddress && !validateAddress(deliveryAddress)) {
       return res.status(400).json({ error: 'Хүргэлтийн хаяг хэт богино байна (дор хаяж 10 тэмдэгт)' });
     }
 

@@ -62,16 +62,28 @@ export function fulfillmentTypeLabel(type) {
 }
 
 export function parsePreOrderFields(body) {
+  const isPreOrder = body.isPreOrder === true || body.isPreOrder === 'true';
+
+  if (!isPreOrder) {
+    return {
+      fulfillmentType: 'delivery',
+      scheduledDate: '',
+      scheduledTime: '',
+      isPreOrder: false,
+    };
+  }
+
   const fulfillmentType = body.fulfillmentType === 'pickup' ? 'pickup' : 'delivery';
   const scheduledDate = String(body.scheduledDate || '').trim();
   const scheduledTime = String(body.scheduledTime || '').trim();
-  const isPreOrder = Boolean(scheduledDate && scheduledTime);
 
-  return { fulfillmentType, scheduledDate, scheduledTime, isPreOrder };
+  return { fulfillmentType, scheduledDate, scheduledTime, isPreOrder: true };
 }
 
 export function validatePreOrder({ scheduledDate, scheduledTime, isPreOrder }) {
-  if (!isPreOrder) {
+  if (!isPreOrder) return null;
+
+  if (!scheduledDate || !scheduledTime) {
     return 'Урьдчилсан захиалгын огноо, цаг сонгоно уу';
   }
   if (!validateScheduledDate(scheduledDate)) {
