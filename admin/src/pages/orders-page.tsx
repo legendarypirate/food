@@ -207,7 +207,7 @@ function OrderCard({
               {mn.orderStatus[order.status as keyof typeof mn.orderStatus] || order.status}
             </Badge>
             {order.isPreOrder && (
-              <Badge variant="outline">{mn.preOrder.badge}</Badge>
+              <Badge variant="warning">{mn.preOrder.badge}</Badge>
             )}
             {order.fulfillmentType === 'pickup' && (
               <Badge variant="secondary">{mn.preOrder.pickup}</Badge>
