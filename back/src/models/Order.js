@@ -15,6 +15,13 @@ const Order = sequelize.define(
     total: { type: DataTypes.INTEGER, allowNull: false },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
     dateLabel: { type: DataTypes.STRING, allowNull: false },
+    fulfillmentType: {
+      type: DataTypes.ENUM('delivery', 'pickup'),
+      defaultValue: 'delivery',
+    },
+    scheduledDate: { type: DataTypes.STRING, allowNull: true },
+    scheduledTime: { type: DataTypes.STRING, allowNull: true },
+    isPreOrder: { type: DataTypes.BOOLEAN, defaultValue: false },
     estimatedMinutes: { type: DataTypes.INTEGER, allowNull: true },
     tracking: { type: DataTypes.JSONB, allowNull: true },
     courierId: { type: DataTypes.INTEGER, allowNull: true },

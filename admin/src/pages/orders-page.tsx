@@ -51,6 +51,25 @@ function isPendingOrder(order: Order) {
   return order.status === 'active';
 }
 
+function fulfillmentLabel(type?: Order['fulfillmentType']) {
+  return type === 'pickup' ? mn.preOrder.pickup : mn.preOrder.delivery;
+}
+
+function formatScheduledDate(date?: string | null) {
+  if (!date) return '';
+  const [year, month, day] = date.split('-').map(Number);
+  const scheduled = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  scheduled.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  if (scheduled.getTime() === today.getTime()) return 'Өнөөдөр';
+  if (scheduled.getTime() === tomorrow.getTime()) return 'Маргааш';
+  return `${month}-р сарын ${day}`;
+}
+
 export function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -187,12 +206,24 @@ function OrderCard({
             >
               {mn.orderStatus[order.status as keyof typeof mn.orderStatus] || order.status}
             </Badge>
+            {order.isPreOrder && (
+              <Badge variant="outline">{mn.preOrder.badge}</Badge>
+            )}
+            {order.fulfillmentType === 'pickup' && (
+              <Badge variant="secondary">{mn.preOrder.pickup}</Badge>
+            )}
           </div>
           <p className="mt-1 text-sm text-muted-foreground">{order.restaurantName}</p>
           <p className="text-sm text-muted-foreground">
             {order.date} • {order.total.toLocaleString()}₮
             {itemCount > 0 ? ` • ${itemCount} зүйл` : ''}
           </p>
+          {order.isPreOrder && order.scheduledDate && order.scheduledTime && (
+            <p className="mt-1 text-sm font-medium text-primary">
+              {mn.preOrder.scheduledFor}: {formatScheduledDate(order.scheduledDate)}{' '}
+              {order.scheduledTime} • {fulfillmentLabel(order.fulfillmentType)}
+            </p>
+          )}
           <p className="mt-1 text-sm font-medium">
             {mn.trackingStep}:{' '}
             <span className={isDeliveryActive ? 'text-blue-700' : 'text-foreground'}>
@@ -265,9 +296,31 @@ function OrderCard({
 
       {expanded && (
         <CardContent className="space-y-4 border-t pt-4">
+          {order.isPreOrder && (
+            <div className="rounded-lg border bg-muted/20 p-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {mn.preOrder.badge}
+              </p>
+              <div className="mt-2 grid gap-2 text-sm sm:grid-cols-2">
+                <p>
+                  <span className="text-muted-foreground">{mn.preOrder.scheduledFor}: </span>
+                  <span className="font-medium text-foreground">
+                    {formatScheduledDate(order.scheduledDate)} {order.scheduledTime}
+                  </span>
+                </p>
+                <p>
+                  <span className="text-muted-foreground">{mn.preOrder.fulfillmentType}: </span>
+                  <span className="font-medium text-foreground">
+                    {fulfillmentLabel(order.fulfillmentType)}
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
+
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Хүргэлтийн хаяг
+              {order.fulfillmentType === 'pickup' ? 'Авах байршил' : 'Хүргэлтийн хаяг'}
             </p>
             <p className="mt-1 text-sm text-foreground">{order.deliveryAddress}</p>
           </div>

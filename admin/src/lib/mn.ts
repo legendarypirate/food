@@ -74,6 +74,13 @@ export const mn = {
     delivered: 'Хүргэгдсэн',
     cancelled: 'Цуцлагдсан',
   },
+  preOrder: {
+    badge: 'Урьдчилсан',
+    scheduledFor: 'Захиалсан цаг',
+    fulfillmentType: 'Авах арга',
+    delivery: 'Хүргэлтээр',
+    pickup: 'Очиж идэх',
+  },
   orderActions: {
     preparing: 'Бэлтгэгдсэн',
     out_for_delivery: 'Хүргэлтэнд гарсан',

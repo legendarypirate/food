@@ -6,6 +6,7 @@ import {
   User,
 } from '../models/index.js';
 import { createInitialTracking } from '../utils/orderTracking.js';
+import { formatScheduledLabel } from '../utils/preOrder.js';
 import { serializeOrder } from '../utils/serializers.js';
 import { retrievePaymentIntent } from './wireService.js';
 
@@ -44,7 +45,17 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
   }
 
   const metadata = payment.metadata || {};
-  const { restaurantId, items, phone, deliveryAddress, userId } = metadata;
+  const {
+    restaurantId,
+    items,
+    phone,
+    deliveryAddress,
+    userId,
+    fulfillmentType = 'delivery',
+    scheduledDate,
+    scheduledTime,
+    isPreOrder = false,
+  } = metadata;
 
   if (!restaurantId || !Array.isArray(items) || items.length === 0) {
     throw new Error('Төлбөрийн metadata дутуу байна');
@@ -64,6 +75,15 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
     throw new Error('Төлбөрийн дүн захиалгын дүнтэй таарахгүй байна');
   }
 
+  const resolvedAddress =
+    fulfillmentType === 'pickup'
+      ? `Очиж авах · ${restaurant.name}`
+      : String(deliveryAddress || '').trim();
+
+  const dateLabel = isPreOrder
+    ? formatScheduledLabel(scheduledDate, scheduledTime) || formatDateLabel()
+    : formatDateLabel();
+
   const orderNumber = payment.senderInvoiceNo;
   const order = await Order.create({
     orderNumber,
@@ -71,10 +91,14 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
     restaurantId,
     status: 'active',
     total,
-    deliveryAddress: String(deliveryAddress || '').trim(),
-    dateLabel: formatDateLabel(),
+    deliveryAddress: resolvedAddress,
+    dateLabel,
+    fulfillmentType,
+    scheduledDate: isPreOrder ? scheduledDate : null,
+    scheduledTime: isPreOrder ? scheduledTime : null,
+    isPreOrder: Boolean(isPreOrder),
     estimatedMinutes: 30,
-    tracking: createInitialTracking(orderNumber, restaurant.name, String(deliveryAddress || '').trim()),
+    tracking: createInitialTracking(orderNumber, restaurant.name, resolvedAddress),
   });
 
   await OrderItem.bulkCreate(

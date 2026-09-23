@@ -4,6 +4,11 @@ import { requireAuth } from '../middleware/auth.js';
 import { serializeQPayPayment } from '../utils/serializers.js';
 import { handleWirePaymentSucceeded, syncPaymentStatus } from '../services/paymentFulfillment.js';
 import {
+  parsePreOrderFields,
+  validateFulfillmentType,
+  validatePreOrder,
+} from '../utils/preOrder.js';
+import {
   createCheckoutSession,
   createPaymentIntent,
   getAllowedOperators,
@@ -41,6 +46,7 @@ router.post('/checkout', requireAuth, async (req, res, next) => {
     }
 
     const { restaurantId, items, phone, deliveryAddress, amount } = req.body;
+    const preOrder = parsePreOrderFields(req.body);
 
     if (!restaurantId || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Ресторан болон бүтээгдэхүүн шаардлагатай' });
@@ -48,7 +54,14 @@ router.post('/checkout', requireAuth, async (req, res, next) => {
     if (!validateMnPhone(phone)) {
       return res.status(400).json({ error: 'Монгол утасны дугаар буруу (8 орон, 6-9-өөр эхэлнэ)' });
     }
-    if (!validateAddress(deliveryAddress)) {
+    if (!validateFulfillmentType(preOrder.fulfillmentType)) {
+      return res.status(400).json({ error: 'Хүргэлт эсвэл очиж авах сонголт буруу байна' });
+    }
+    const preOrderError = validatePreOrder(preOrder);
+    if (preOrderError) {
+      return res.status(400).json({ error: preOrderError });
+    }
+    if (preOrder.fulfillmentType === 'delivery' && !validateAddress(deliveryAddress)) {
       return res.status(400).json({ error: 'Хүргэлтийн хаяг хэт богино байна (дор хаяж 10 тэмдэгт)' });
     }
 
@@ -100,7 +113,11 @@ router.post('/checkout', requireAuth, async (req, res, next) => {
         restaurantId: Number(restaurantId),
         items,
         phone,
-        deliveryAddress: deliveryAddress.trim(),
+        deliveryAddress: String(deliveryAddress || '').trim(),
+        fulfillmentType: preOrder.fulfillmentType,
+        scheduledDate: preOrder.scheduledDate,
+        scheduledTime: preOrder.scheduledTime,
+        isPreOrder: preOrder.isPreOrder,
         userId: req.userId,
         checkoutSessionId: session.id,
       },

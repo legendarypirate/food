@@ -224,6 +224,10 @@ export type Order = {
   total: number;
   date: string;
   deliveryAddress: string;
+  fulfillmentType?: 'delivery' | 'pickup';
+  scheduledDate?: string | null;
+  scheduledTime?: string | null;
+  isPreOrder?: boolean;
   items: { name: string; quantity: number; price: number }[];
   courierId?: string | null;
   courier?: OrderCourier | null;

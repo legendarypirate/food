@@ -7,6 +7,12 @@ import {
   ensureTracking,
   setTrackingStep,
 } from '../utils/orderTracking.js';
+import {
+  formatScheduledLabel,
+  parsePreOrderFields,
+  validateFulfillmentType,
+  validatePreOrder,
+} from '../utils/preOrder.js';
 import { serializeOrder } from '../utils/serializers.js';
 import { canWatchOrder, getCourierLocation } from '../services/driverLocation.js';
 
@@ -82,13 +88,22 @@ router.get('/', requireAuth, async (req, res, next) => {
 router.post('/', requireAuth, async (req, res, next) => {
   try {
     const { restaurantId, items, phone, deliveryAddress } = req.body;
+    const preOrder = parsePreOrderFields(req.body);
+
     if (!restaurantId || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'Ресторан болон бүтээгдэхүүн шаардлагатай' });
     }
     if (!validateMnPhone(phone)) {
       return res.status(400).json({ error: 'Монгол утасны дугаар буруу (8 орон, 6-9-өөр эхэлнэ)' });
     }
-    if (!validateAddress(deliveryAddress)) {
+    if (!validateFulfillmentType(preOrder.fulfillmentType)) {
+      return res.status(400).json({ error: 'Хүргэлт эсвэл очиж авах сонголт буруу байна' });
+    }
+    const preOrderError = validatePreOrder(preOrder);
+    if (preOrderError) {
+      return res.status(400).json({ error: preOrderError });
+    }
+    if (preOrder.fulfillmentType === 'delivery' && !validateAddress(deliveryAddress)) {
       return res.status(400).json({ error: 'Хүргэлтийн хаяг хэт богино байна (дор хаяж 10 тэмдэгт)' });
     }
 
@@ -109,16 +124,29 @@ router.post('/', requireAuth, async (req, res, next) => {
     );
     const orderNumber = `ORD-${Date.now().toString().slice(-6)}`;
 
+    const resolvedAddress =
+      preOrder.fulfillmentType === 'pickup'
+        ? `Очиж авах · ${restaurant.name}`
+        : deliveryAddress.trim();
+
+    const dateLabel = preOrder.isPreOrder
+      ? formatScheduledLabel(preOrder.scheduledDate, preOrder.scheduledTime) || formatDateLabel()
+      : formatDateLabel();
+
     const order = await Order.create({
       orderNumber,
       userId: req.userId,
       restaurantId,
       status: 'active',
       total,
-      deliveryAddress: deliveryAddress.trim(),
-      dateLabel: formatDateLabel(),
+      deliveryAddress: resolvedAddress,
+      dateLabel,
+      fulfillmentType: preOrder.fulfillmentType,
+      scheduledDate: preOrder.isPreOrder ? preOrder.scheduledDate : null,
+      scheduledTime: preOrder.isPreOrder ? preOrder.scheduledTime : null,
+      isPreOrder: preOrder.isPreOrder,
       estimatedMinutes: 30,
-      tracking: createInitialTracking(orderNumber, restaurant.name, deliveryAddress.trim()),
+      tracking: createInitialTracking(orderNumber, restaurant.name, resolvedAddress),
     });
 
     await OrderItem.bulkCreate(
