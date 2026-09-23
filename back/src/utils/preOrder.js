@@ -12,9 +12,9 @@ export function validateScheduledDate(dateStr) {
   if (month < 1 || month > 12 || day < 1 || day > 31) return false;
 
   const todayStr = formatUbDate(new Date());
-  const maxStr = addCalendarDays(todayStr, 14);
+  const tomorrowStr = addCalendarDays(todayStr, 1);
 
-  return dateStr >= todayStr && dateStr <= maxStr;
+  return dateStr === todayStr || dateStr === tomorrowStr;
 }
 
 export function validateScheduledTime(timeStr) {
@@ -62,7 +62,7 @@ export function validatePreOrder({ scheduledDate, scheduledTime, isPreOrder }) {
     return 'Урьдчилсан захиалгын огноо, цаг сонгоно уу';
   }
   if (!validateScheduledDate(scheduledDate)) {
-    return 'Захиалгын огноо буруу байна (өнөөдрөөс 14 хоногийн дотор)';
+    return 'Захиалгын огноо буруу байна (зөвхөн өнөөдөр эсвэл маргааш)';
   }
   if (!validateScheduledTime(scheduledTime)) {
     return 'Захиалгын цаг буруу байна';
