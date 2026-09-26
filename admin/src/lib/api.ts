@@ -67,6 +67,20 @@ export const api = {
       request<Dish>(`/dishes/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
     remove: (id: string) => request<void>(`/dishes/${id}`, { method: 'DELETE' }),
   },
+  uploads: {
+    images: async (files: File[]) => {
+      const data = new FormData();
+      files.forEach((file) => data.append('files', file));
+      const res = await fetch(`${API}/uploads`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: data,
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || res.statusText);
+      return json as { urls: string[] };
+    },
+  },
   auth: {
     login: (phone: string, password: string) =>
       request<{ ok: boolean; token: string; user: { id: number; name: string; phone: string; role: string } }>(
@@ -152,11 +166,13 @@ export type Dish = {
   name: string;
   price: number;
   imageUrl: string;
+  imageUrls: string[];
   badge: string;
   badgeType: string;
   servings: string;
   likes: number;
   category: string;
+  categoryId?: number | null;
   restaurantId: string;
   isActive: boolean;
 };

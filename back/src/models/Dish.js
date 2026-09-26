@@ -9,6 +9,7 @@ const Dish = sequelize.define(
     name: { type: DataTypes.STRING, allowNull: false },
     price: { type: DataTypes.INTEGER, allowNull: false },
     imageUrl: { type: DataTypes.TEXT, allowNull: false },
+    imageUrls: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
     badge: { type: DataTypes.STRING, defaultValue: '' },
     badgeType: {
       type: DataTypes.ENUM('discount', 'newItem', 'none'),

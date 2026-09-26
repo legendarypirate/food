@@ -130,6 +130,7 @@ async function seed() {
     const { restaurantSlug, categorySlug, ...data } = d;
     await Dish.create({
       ...data,
+      imageUrls: data.imageUrl ? [data.imageUrl] : [],
       restaurantId: restaurantMap[restaurantSlug].id,
       categoryId: categoryMap[categorySlug].id,
     });

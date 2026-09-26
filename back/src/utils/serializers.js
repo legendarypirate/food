@@ -33,6 +33,11 @@ export function serializeDish(d) {
     name: json.name,
     price: json.price,
     imageUrl: json.imageUrl,
+    imageUrls: Array.isArray(json.imageUrls) && json.imageUrls.length
+      ? json.imageUrls
+      : json.imageUrl
+        ? [json.imageUrl]
+        : [],
     badge: json.badge || '',
     badgeType: json.badgeType,
     servings: json.servings,

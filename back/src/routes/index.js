@@ -9,6 +9,7 @@ import payments from './payments.js';
 import notifications from './notifications.js';
 import couriers from './couriers.js';
 import courierApp from './courierApp.js';
+import uploads from './uploads.js';
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use('/payments', payments);
 router.use('/notifications', notifications);
 router.use('/couriers', couriers);
 router.use('/courier', courierApp);
+router.use('/uploads', uploads);
 
 export default router;
