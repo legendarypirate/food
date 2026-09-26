@@ -51,6 +51,18 @@ router.get('/', async (req, res, next) => {
   }
 });
 
+router.get('/:id', async (req, res, next) => {
+  try {
+    const dish = await Dish.findByPk(req.params.id, {
+      include: [{ model: Category, as: 'category' }, { model: Restaurant, as: 'restaurant' }],
+    });
+    if (!dish) return res.status(404).json({ error: 'Not found' });
+    res.json(serializeDish(dish));
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/', async (req, res, next) => {
   try {
     const payload = dishPayload(req.body);
