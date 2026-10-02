@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   Smartphone,
   Download,
@@ -275,7 +275,7 @@ export function LandingPage() {
             <a href="#">Онцлог</a>
             <a href="#">Апп татах</a>
             <a href="#">Хамтрагч рестораны нэвтрэх</a>
-            <a href="#">Нууцлалын бодлого</a>
+            <Link to="/privacy">Нууцлалын бодлого</Link>
           </div>
           <div className="land-footer-right">
             <button

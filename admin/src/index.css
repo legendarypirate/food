@@ -618,6 +618,79 @@
   border-color: #ff6b35;
 }
 
+/* LEGAL / PRIVACY */
+.legal-root { padding-top: 68px; }
+.legal-main {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 48px 24px 80px;
+}
+.legal-kicker {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #ff6b35;
+  margin-bottom: 8px;
+}
+.legal-title {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin-bottom: 8px;
+}
+.legal-updated {
+  font-size: 13px;
+  color: rgba(240,239,232,0.45);
+  margin-bottom: 24px;
+}
+.legal-url-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(255,107,53,0.08);
+  border: 1px solid rgba(255,107,53,0.25);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 36px;
+}
+.legal-url-box span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(240,239,232,0.5);
+}
+.legal-url-box a {
+  color: #ffb089;
+  font-size: 14px;
+  font-weight: 600;
+  word-break: break-all;
+}
+.legal-section { margin-bottom: 28px; }
+.legal-section h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+.legal-section p,
+.legal-section li {
+  font-size: 15px;
+  line-height: 1.65;
+  color: rgba(240,239,232,0.78);
+}
+.legal-section ul {
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.legal-section code {
+  font-size: 13px;
+  color: #f7c59f;
+}
+.legal-section a { color: #ff6b35; }
+
 /* ═══════════════════════════════════════
    LOGIN PAGE
 ═══════════════════════════════════════ */
