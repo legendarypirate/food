@@ -8,6 +8,7 @@ import apiRoutes from './routes/index.js';
 import { initPushNotifications } from './services/pushNotification.js';
 import { attachIo } from './services/driverLocation.js';
 import { initSocket } from './socket.js';
+import { ensureReviewUser } from './services/reviewUser.js';
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
@@ -62,6 +63,7 @@ async function start() {
   initPushNotifications();
   await sequelize.authenticate();
   await sequelize.sync({ alter: true });
+  await ensureReviewUser();
 
   const server = http.createServer(app);
   const io = initSocket(server);

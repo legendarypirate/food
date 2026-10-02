@@ -84,6 +84,30 @@ router.post('/login', async (req, res, next) => {
   }
 });
 
+router.post('/email', async (req, res, next) => {
+  try {
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const password = String(req.body.password || '');
+    if (!email || !password) {
+      return res.status(400).json({ error: 'И-мэйл болон нууц үг оруулна уу' });
+    }
+
+    const user = await User.findOne({ where: { email, isActive: true } });
+    if (
+      user?.role === 'customer' &&
+      user.passwordHash &&
+      verifyPassword(password, user.passwordHash)
+    ) {
+      const token = issueToken(user.id);
+      return res.json({ ok: true, token, user: serializeUser(user) });
+    }
+
+    res.status(401).json({ error: 'И-мэйл эсвэл нууц үг буруу байна' });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/google', async (req, res, next) => {
   try {
     const { googleId, email, name, avatarUrl } = req.body;

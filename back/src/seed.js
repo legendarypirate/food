@@ -1,4 +1,5 @@
 import sequelize from './config/database.js';
+import { hashPassword } from './utils/password.js';
 import {
   Category,
   Dish,
@@ -220,6 +221,17 @@ async function seed() {
       points: 680,
       orderCount: 12,
       avatarUrl: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&q=80',
+    },
+    {
+      name: 'Play Store Reviewer',
+      phone: '+976 99001100',
+      email: 'testuser@gmail.com',
+      role: 'customer',
+      membershipLevel: 'Gold',
+      points: 100,
+      orderCount: 0,
+      deliveryAddress: 'Самбуугийн гудамж 48, УБ',
+      passwordHash: hashPassword('123456'),
     },
   ]);
 
