@@ -6,6 +6,7 @@ import Restaurant from './Restaurant.js';
 import RestaurantCategory from './RestaurantCategory.js';
 import User from './User.js';
 import QPayPayment from './QPayPayment.js';
+import Setting from './Setting.js';
 
 Category.belongsToMany(Restaurant, {
   through: RestaurantCategory,
@@ -44,5 +45,6 @@ export {
   QPayPayment,
   Restaurant,
   RestaurantCategory,
+  Setting,
   User,
 };

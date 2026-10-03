@@ -123,6 +123,14 @@ export const api = {
         failureCount: number;
       }>('/notifications/send', { method: 'POST', body: JSON.stringify(body) }),
   },
+  settings: {
+    get: () => request<{ paymentsEnabled: boolean }>('/settings'),
+    update: (body: { paymentsEnabled: boolean }) =>
+      request<{ paymentsEnabled: boolean }>('/settings', {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      }),
+  },
   payments: {
     list: () => request<QPayPayment[]>('/payments'),
     create: (body: Partial<QPayPayment>) =>

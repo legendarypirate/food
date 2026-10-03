@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { Order, QPayPayment } from '../models/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { serializeQPayPayment } from '../utils/serializers.js';
-import { handleWirePaymentSucceeded, syncPaymentStatus } from '../services/paymentFulfillment.js';
+import { createOrderFromCheckout, handleWirePaymentSucceeded, syncPaymentStatus } from '../services/paymentFulfillment.js';
+import { isPaymentsEnabled } from '../services/appSettings.js';
 import {
   parsePreOrderFields,
   validateFulfillmentType,
@@ -39,12 +40,6 @@ function makeReference() {
 
 router.post('/checkout', requireAuth, async (req, res, next) => {
   try {
-    if (!isWireConfigured()) {
-      return res.status(503).json({
-        error: 'Төлбөрийн систем тохируулаагүй байна. WIRE_API_KEY нэмнэ үү.',
-      });
-    }
-
     const { restaurantId, items, phone, deliveryAddress, amount } = req.body;
     const preOrder = parsePreOrderFields(req.body);
 
@@ -75,6 +70,37 @@ router.post('/checkout', requireAuth, async (req, res, next) => {
 
     if (paymentAmount !== computedTotal || paymentAmount <= 0) {
       return res.status(400).json({ error: 'Төлбөрийн дүн буруу байна' });
+    }
+
+    const paymentsEnabled = await isPaymentsEnabled();
+    if (!paymentsEnabled) {
+      const reference = makeReference();
+      const order = await createOrderFromCheckout({
+        restaurantId: Number(restaurantId),
+        items,
+        phone,
+        deliveryAddress: String(deliveryAddress || '').trim(),
+        userId: req.userId,
+        fulfillmentType: preOrder.fulfillmentType,
+        scheduledDate: preOrder.scheduledDate,
+        scheduledTime: preOrder.scheduledTime,
+        isPreOrder: preOrder.isPreOrder,
+        orderNumber: reference,
+        expectedAmount: paymentAmount,
+      });
+      return res.status(201).json({
+        paymentRequired: false,
+        status: 'paid',
+        senderInvoiceNo: order.orderNumber,
+        amount: paymentAmount,
+        order,
+      });
+    }
+
+    if (!isWireConfigured()) {
+      return res.status(503).json({
+        error: 'Төлбөрийн систем тохируулаагүй байна. WIRE_API_KEY нэмнэ үү.',
+      });
     }
 
     const allowedOperators = getAllowedOperators();
@@ -127,6 +153,7 @@ router.post('/checkout', requireAuth, async (req, res, next) => {
 
     res.status(201).json({
       ...serializeQPayPayment(payment),
+      paymentRequired: true,
       checkoutUrl: session.url,
       paymentIntentId: paymentIntent.id,
       checkoutSessionId: session.id,

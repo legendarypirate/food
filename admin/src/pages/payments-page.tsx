@@ -103,6 +103,7 @@ export function PaymentsPage() {
       <AdminPageHeader title={mn.pages.payments} onRefresh={onRefresh} />
       <AdminPageState loading={loading} error={error}>
     <div className="space-y-4">
+      <PaymentToggleCard />
       <div className="flex justify-end">
         <Button onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" />
@@ -256,6 +257,60 @@ export function PaymentsPage() {
     </div>
       </AdminPageState>
     </>
+  );
+}
+
+function PaymentToggleCard() {
+  const [enabled, setEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    api.settings.get().then((s) => setEnabled(s.paymentsEnabled)).catch(() => {});
+  }, []);
+
+  async function toggle() {
+    const next = !enabled;
+    setEnabled(next);
+    setSaving(true);
+    try {
+      const s = await api.settings.update({ paymentsEnabled: next });
+      setEnabled(s.paymentsEnabled);
+    } catch {
+      setEnabled(!next);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={saving}
+      className={`flex w-full items-center justify-between rounded-xl border px-4 py-4 text-left transition-colors ${
+        enabled
+          ? 'border-emerald-200 bg-emerald-50'
+          : 'border-border bg-card'
+      }`}
+    >
+      <div>
+        <p className="text-sm font-semibold">{mn.pages.paymentToggle}</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {enabled ? mn.pages.paymentOn : mn.pages.paymentOff}
+        </p>
+      </div>
+      <span
+        className={`relative inline-flex h-8 w-[52px] shrink-0 items-center rounded-full p-[3px] transition-colors ${
+          enabled ? 'bg-emerald-600' : 'bg-neutral-300'
+        }`}
+      >
+        <span
+          className={`inline-block h-[26px] w-[26px] rounded-full bg-white shadow transition-transform ${
+            enabled ? 'translate-x-5' : 'translate-x-0'
+          }`}
+        />
+      </span>
+    </button>
   );
 }
 

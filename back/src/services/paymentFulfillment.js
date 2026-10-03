@@ -32,27 +32,21 @@ function formatPhoneForProfile(phone) {
   return `+976 ${digits.slice(0, 4)}-${digits.slice(4)}`;
 }
 
-export async function fulfillPayment(payment, { wireStatus } = {}) {
-  if (payment.status === 'paid' && payment.orderId) {
-    const existing = await Order.findByPk(payment.orderId, { include });
-    return { payment, order: existing ? serializeOrder(existing) : null };
-  }
-
-  const metadata = payment.metadata || {};
-  const {
-    restaurantId,
-    items,
-    phone,
-    deliveryAddress,
-    userId,
-    fulfillmentType = 'delivery',
-    scheduledDate,
-    scheduledTime,
-    isPreOrder = false,
-  } = metadata;
-
+export async function createOrderFromCheckout({
+  restaurantId,
+  items,
+  phone,
+  deliveryAddress,
+  userId,
+  fulfillmentType = 'delivery',
+  scheduledDate,
+  scheduledTime,
+  isPreOrder = false,
+  orderNumber,
+  expectedAmount,
+}) {
   if (!restaurantId || !Array.isArray(items) || items.length === 0) {
-    throw new Error('Төлбөрийн metadata дутуу байна');
+    throw new Error('Захиалгын мэдээлэл дутуу байна');
   }
 
   const restaurant = await Restaurant.findByPk(restaurantId);
@@ -65,7 +59,7 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
     0,
   );
 
-  if (total !== payment.amount) {
+  if (expectedAmount != null && total !== expectedAmount) {
     throw new Error('Төлбөрийн дүн захиалгын дүнтэй таарахгүй байна');
   }
 
@@ -78,9 +72,9 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
     ? formatScheduledLabel(scheduledDate, scheduledTime) || formatUbDateLabel()
     : formatUbDateLabel();
 
-  const orderNumber = payment.senderInvoiceNo;
+  const number = orderNumber || `ORD-${Date.now().toString().slice(-8)}`;
   const order = await Order.create({
-    orderNumber,
+    orderNumber: number,
     userId: userId || null,
     restaurantId,
     status: 'active',
@@ -92,7 +86,7 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
     scheduledTime: isPreOrder ? scheduledTime : null,
     isPreOrder: Boolean(isPreOrder),
     estimatedMinutes: 30,
-    tracking: createInitialTracking(orderNumber, restaurant.name, resolvedAddress),
+    tracking: createInitialTracking(number, restaurant.name, resolvedAddress),
   });
 
   await OrderItem.bulkCreate(
@@ -118,6 +112,23 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
     }
   }
 
+  const full = await Order.findByPk(order.id, { include });
+  return serializeOrder(full);
+}
+
+export async function fulfillPayment(payment, { wireStatus } = {}) {
+  if (payment.status === 'paid' && payment.orderId) {
+    const existing = await Order.findByPk(payment.orderId, { include });
+    return { payment, order: existing ? serializeOrder(existing) : null };
+  }
+
+  const metadata = payment.metadata || {};
+  const order = await createOrderFromCheckout({
+    ...metadata,
+    orderNumber: payment.senderInvoiceNo,
+    expectedAmount: payment.amount,
+  });
+
   await payment.update({
     status: 'paid',
     orderId: order.id,
@@ -125,8 +136,7 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
     qrText: wireStatus || payment.qrText,
   });
 
-  const full = await Order.findByPk(order.id, { include });
-  return { payment, order: serializeOrder(full) };
+  return { payment, order };
 }
 
 export async function syncPaymentStatus(payment) {
