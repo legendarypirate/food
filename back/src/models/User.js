@@ -17,6 +17,7 @@ const User = sequelize.define(
     orderCount: { type: DataTypes.INTEGER, defaultValue: 0 },
     avatarUrl: { type: DataTypes.TEXT, allowNull: true },
     googleId: { type: DataTypes.STRING, allowNull: true, unique: true },
+    appleId: { type: DataTypes.STRING, allowNull: true, unique: true },
     deliveryAddress: { type: DataTypes.STRING, allowNull: true },
     isActive: { type: DataTypes.BOOLEAN, defaultValue: true },
     fcmToken: { type: DataTypes.TEXT, allowNull: true },

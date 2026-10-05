@@ -143,6 +143,45 @@ router.post('/google', async (req, res, next) => {
   }
 });
 
+router.post('/apple', async (req, res, next) => {
+  try {
+    const appleId = String(req.body.appleId || '').trim();
+    const emailInput = String(req.body.email || '').trim().toLowerCase();
+    const name = String(req.body.name || '').trim();
+
+    if (!appleId) {
+      return res.status(400).json({ error: 'Apple мэдээлэл дутуу байна' });
+    }
+
+    const fallbackEmail = `apple-${appleId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 48)}@foody.internal`;
+    const email = emailInput || fallbackEmail;
+
+    let user = await User.findOne({ where: { appleId } });
+    if (!user && emailInput) {
+      user = await User.findOne({ where: { email: emailInput } });
+    }
+    if (user) {
+      await user.update({
+        appleId,
+        name: name || user.name,
+      });
+    } else {
+      user = await User.create({
+        appleId,
+        email,
+        name: name || 'Хэрэглэгч',
+        phone: '',
+        role: 'customer',
+      });
+    }
+
+    const token = issueToken(user.id);
+    res.json({ ok: true, token, user: serializeUser(user) });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/verify/start', async (req, res, next) => {
   try {
     pruneVerifySessions();
