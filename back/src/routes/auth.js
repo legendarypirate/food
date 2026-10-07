@@ -314,4 +314,28 @@ router.post('/logout', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+router.delete('/me', requireAuth, async (req, res, next) => {
+  try {
+    if (req.user?.role === 'admin') {
+      return res.status(403).json({ error: 'Админ бүртгэлийг аппаас устгах боломжгүй' });
+    }
+    if (req.user?.role === 'courier') {
+      return res.status(403).json({ error: 'Жолоочийн бүртгэлийг энд устгах боломжгүй' });
+    }
+
+    const user = await User.findByPk(req.userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
+    }
+
+    const token = (req.headers.authorization || '').slice(7);
+    if (token && token !== 'demo-admin-token') revokeToken(token);
+
+    await user.destroy();
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 export default router;
