@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Order, QPayPayment } from '../models/index.js';
+import { Order, QPayPayment, User } from '../models/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import { serializeQPayPayment } from '../utils/serializers.js';
 import { createOrderFromCheckout, handleWirePaymentSucceeded, syncPaymentStatus } from '../services/paymentFulfillment.js';
@@ -16,6 +16,7 @@ import {
   isWireConfigured,
   verifyWebhookSignature,
 } from '../services/wireService.js';
+import { syncUserCheckoutContact } from '../services/userContact.js';
 
 const router = Router();
 
@@ -112,6 +113,14 @@ router.post('/checkout', requireAuth, async (req, res, next) => {
 
     const reference = makeReference();
     const description = `foodmn захиалга ${reference}`;
+
+    const customer = await User.findByPk(req.userId);
+    if (customer) {
+      await syncUserCheckoutContact(customer, {
+        phone,
+        deliveryAddress: String(deliveryAddress || '').trim(),
+      });
+    }
 
     const paymentIntent = await createPaymentIntent({
       amount: paymentAmount,

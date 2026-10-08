@@ -9,6 +9,8 @@ import { createInitialTracking } from '../utils/orderTracking.js';
 import { formatScheduledLabel } from '../utils/preOrder.js';
 import { serializeOrder } from '../utils/serializers.js';
 import { formatUbDateLabel } from '../utils/ulaanbaatarTime.js';
+import { formatPhone, isValidMnPhone } from '../utils/phone.js';
+import { syncUserCheckoutContact } from './userContact.js';
 import { retrievePaymentIntent } from './wireService.js';
 
 const include = [
@@ -20,17 +22,6 @@ const include = [
     attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount'],
   },
 ];
-
-function normalizePhone(phone) {
-  const digits = String(phone || '').replace(/\D/g, '');
-  if (digits.startsWith('976') && digits.length === 11) return digits.slice(3);
-  return digits;
-}
-
-function formatPhoneForProfile(phone) {
-  const digits = normalizePhone(phone);
-  return `+976 ${digits.slice(0, 4)}-${digits.slice(4)}`;
-}
 
 export async function createOrderFromCheckout({
   restaurantId,
@@ -73,6 +64,9 @@ export async function createOrderFromCheckout({
     : formatUbDateLabel();
 
   const number = orderNumber || `ORD-${Date.now().toString().slice(-8)}`;
+  const formattedPhone =
+    phone && isValidMnPhone(phone) ? formatPhone(phone) : null;
+
   const order = await Order.create({
     orderNumber: number,
     userId: userId || null,
@@ -80,6 +74,7 @@ export async function createOrderFromCheckout({
     status: 'active',
     total,
     deliveryAddress: resolvedAddress,
+    contactPhone: formattedPhone,
     dateLabel,
     fulfillmentType,
     scheduledDate: isPreOrder ? scheduledDate : null,
@@ -101,12 +96,7 @@ export async function createOrderFromCheckout({
   if (userId) {
     const user = await User.findByPk(userId);
     if (user) {
-      if (phone) {
-        await user.update({
-          phone: formatPhoneForProfile(phone),
-          deliveryAddress: String(deliveryAddress || '').trim(),
-        });
-      }
+      await syncUserCheckoutContact(user, { phone, deliveryAddress });
       await user.increment('orderCount');
       await user.increment('points', { by: Math.floor(total / 1000) });
     }

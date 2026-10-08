@@ -73,6 +73,7 @@ export function serializeOrder(o) {
           ? formatOrderPlacedLabel(json.createdAt)
           : json.dateLabel,
     deliveryAddress: json.deliveryAddress,
+    contactPhone: json.contactPhone || null,
     fulfillmentType: json.fulfillmentType || 'delivery',
     scheduledDate: json.scheduledDate || null,
     scheduledTime: json.scheduledTime || null,

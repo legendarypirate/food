@@ -14,6 +14,11 @@ const Order = sequelize.define(
     },
     total: { type: DataTypes.INTEGER, allowNull: false },
     deliveryAddress: { type: DataTypes.STRING, allowNull: false },
+    contactPhone: {
+      type: DataTypes.STRING(32),
+      allowNull: true,
+      field: 'contact_phone',
+    },
     dateLabel: { type: DataTypes.STRING, allowNull: false },
     fulfillmentType: {
       type: DataTypes.ENUM('delivery', 'pickup'),

@@ -16,6 +16,8 @@ import {
 import { serializeOrder } from '../utils/serializers.js';
 import { formatUbDateLabel } from '../utils/ulaanbaatarTime.js';
 import { canWatchOrder, getCourierLocation } from '../services/driverLocation.js';
+import { formatPhone, isValidMnPhone } from '../utils/phone.js';
+import { syncUserCheckoutContact } from '../services/userContact.js';
 
 const router = Router();
 
@@ -108,11 +110,13 @@ router.post('/', requireAuth, async (req, res, next) => {
 
     const user = await User.findByPk(req.userId);
     if (user) {
-      await user.update({
-        phone: phone.includes('+976') ? phone : `+976 ${normalizePhone(phone).slice(0, 4)}-${normalizePhone(phone).slice(4)}`,
+      await syncUserCheckoutContact(user, {
+        phone,
         deliveryAddress: deliveryAddress.trim(),
       });
     }
+
+    const formattedPhone = isValidMnPhone(phone) ? formatPhone(phone) : null;
 
     const total = items.reduce(
       (sum, item) => sum + (Number(item.price) || 0) * (Number(item.quantity) || 1),
@@ -137,6 +141,7 @@ router.post('/', requireAuth, async (req, res, next) => {
       status: 'active',
       total,
       deliveryAddress: resolvedAddress,
+      contactPhone: formattedPhone,
       dateLabel,
       fulfillmentType: preOrder.fulfillmentType,
       scheduledDate: preOrder.isPreOrder ? preOrder.scheduledDate : null,
