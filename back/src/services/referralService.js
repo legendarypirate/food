@@ -10,6 +10,7 @@ import {
 
 const CLAIM_MAX_AGE_MS =
   Number(process.env.REFERRAL_CLAIM_MAX_AGE_HOURS || 72) * 60 * 60 * 1000;
+const INVITER_REWARD_POINTS = Number(process.env.REFERRAL_INVITER_POINTS || 500);
 
 export async function ensureUserReferralCode(user) {
   if (user.referralCode) {
@@ -110,14 +111,60 @@ export async function getPublicReferralInfo(code) {
 }
 
 export async function getReferralStatsForUser(userId) {
-  const [registered, completed] = await Promise.all([
+  const [pending, completed] = await Promise.all([
     UserReferral.count({ where: { inviterUserId: userId, status: 'registered' } }),
     UserReferral.count({ where: { inviterUserId: userId, status: 'completed' } }),
   ]);
   return {
-    invitedRegistered: registered + completed,
+    invitedRegistered: pending + completed,
     invitedCompleted: completed,
+    invitedPendingPhoneVerify: pending,
   };
+}
+
+/** Awards inviter points once the invitee's phone is verified. */
+export async function completeReferralRewardForInvitee(inviteeUserId) {
+  return sequelize.transaction(async (transaction) => {
+    const invitee = await User.findByPk(inviteeUserId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!invitee?.phoneVerifiedAt || !invitee.invitedByUserId) {
+      return null;
+    }
+
+    const referral = await UserReferral.findOne({
+      where: {
+        inviteeUserId: invitee.id,
+        inviterUserId: invitee.invitedByUserId,
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!referral || referral.status === 'completed') {
+      return null;
+    }
+
+    const inviter = await User.findByPk(invitee.invitedByUserId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!inviter) return null;
+
+    await referral.update(
+      { status: 'completed', completedAt: new Date() },
+      { transaction },
+    );
+    await inviter.update(
+      { points: (inviter.points || 0) + INVITER_REWARD_POINTS },
+      { transaction },
+    );
+
+    return {
+      inviterUserId: inviter.id,
+      pointsAwarded: INVITER_REWARD_POINTS,
+    };
+  });
 }
 
 function assertClaimEligible(invitee) {
@@ -210,6 +257,13 @@ export async function claimReferralForUser({ inviteeUserId, referralCode, clickI
       inviterUserId: inviter.id,
       referralCode: normalized,
       clickId: resolvedClickId,
+    };
+  }).then(async (result) => {
+    const reward = await completeReferralRewardForInvitee(inviteeUserId);
+    return {
+      ...result,
+      referralCompleted: Boolean(reward),
+      pointsAwardedToInviter: reward?.pointsAwarded ?? 0,
     };
   });
 }

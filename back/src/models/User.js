@@ -37,6 +37,11 @@ const User = sequelize.define(
       allowNull: true,
       field: 'invited_by_user_id',
     },
+    phoneVerifiedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'phone_verified_at',
+    },
   },
   { tableName: 'users', underscored: true },
 );

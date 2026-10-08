@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { User } from '../models/index.js';
-import { issueToken, requireAuth, revokeToken } from '../middleware/auth.js';
+import { issueToken, optionalAuth, requireAuth, revokeToken } from '../middleware/auth.js';
+import { completeReferralRewardForInvitee } from '../services/referralService.js';
 import { serializeUser } from '../utils/serializers.js';
 import { verifyPassword } from '../utils/password.js';
 import { formatPhone, isValidMnPhone, normalizePhone } from '../utils/phone.js';
@@ -45,8 +46,38 @@ async function resolveVerifiedCustomer(phone) {
       email: `phone-${digits}@foody.internal`,
       role: 'customer',
       isActive: true,
+      phoneVerifiedAt: new Date(),
+    });
+  } else if (!user.phoneVerifiedAt) {
+    await user.update({
+      phone: formatPhone(digits),
+      phoneVerifiedAt: new Date(),
     });
   }
+  return user;
+}
+
+async function attachVerifiedPhoneToUser(userId, phone) {
+  const digits = normalizePhone(phone);
+  const user = await User.findByPk(userId);
+  if (!user || user.role !== 'customer') {
+    const err = new Error('Хэрэглэгч олдсонгүй');
+    err.statusCode = 404;
+    throw err;
+  }
+
+  const taken = await findUserByPhone(digits, 'customer');
+  if (taken && taken.id !== user.id) {
+    const err = new Error('Энэ утас өөр бүртгэлд холбогдсон байна');
+    err.statusCode = 409;
+    throw err;
+  }
+
+  await user.update({
+    phone: formatPhone(digits),
+    phoneVerifiedAt: new Date(),
+  });
+  await completeReferralRewardForInvitee(user.id);
   return user;
 }
 
@@ -182,7 +213,7 @@ router.post('/apple', async (req, res, next) => {
   }
 });
 
-router.post('/verify/start', async (req, res, next) => {
+router.post('/verify/start', optionalAuth, async (req, res, next) => {
   try {
     pruneVerifySessions();
     const phone = normalizePhone(req.body.phone);
@@ -191,7 +222,15 @@ router.post('/verify/start', async (req, res, next) => {
     }
 
     const session = await createVerifyMnSession(phone);
-    rememberVerifySession(session.sessionId, { phone, role: 'customer' });
+    const meta = { phone, role: 'customer' };
+    if (req.userId) {
+      const authed = await User.findByPk(req.userId);
+      if (authed?.role === 'customer') {
+        meta.userId = req.userId;
+        meta.linkExistingAccount = true;
+      }
+    }
+    rememberVerifySession(session.sessionId, meta);
 
     const displayInstruction =
       session.displayInstruction ||
@@ -230,7 +269,13 @@ router.get('/verify/:sessionId', async (req, res, next) => {
       });
     }
 
-    const user = await resolveVerifiedCustomer(local.phone);
+    let user;
+    if (local.userId && local.linkExistingAccount) {
+      user = await attachVerifiedPhoneToUser(local.userId, local.phone);
+    } else {
+      user = await resolveVerifiedCustomer(local.phone);
+      await completeReferralRewardForInvitee(user.id);
+    }
     consumeVerifySession(sessionId);
     const token = issueToken(user.id);
     res.json({

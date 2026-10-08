@@ -109,6 +109,8 @@ export function serializeUser(u) {
     deliveryAddress: json.deliveryAddress || null,
     isActive: json.isActive,
     createdAt: json.createdAt,
+    phoneVerified: Boolean(json.phoneVerifiedAt),
+    phoneVerifiedAt: json.phoneVerifiedAt || null,
   };
 }
 

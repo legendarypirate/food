@@ -9,7 +9,8 @@
     "seed": "node src/seed.js",
     "db:sync": "node src/sync.js",
     "ensure-review-user": "node src/ensure-review-user.js",
-    "db:migrate:referrals": "node scripts/run-referrals-migration.js"
+    "db:migrate:referrals": "node scripts/run-referrals-migration.js",
+    "db:migrate:phone-verify": "node scripts/run-phone-verify-migration.js"
   },
   "dependencies": {
     "cors": "^2.8.5",
