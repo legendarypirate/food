@@ -26,6 +26,17 @@ const User = sequelize.define(
     lastLat: { type: DataTypes.DOUBLE, allowNull: true },
     lastLng: { type: DataTypes.DOUBLE, allowNull: true },
     lastLocationAt: { type: DataTypes.DATE, allowNull: true },
+    referralCode: {
+      type: DataTypes.STRING(16),
+      allowNull: true,
+      unique: true,
+      field: 'referral_code',
+    },
+    invitedByUserId: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      field: 'invited_by_user_id',
+    },
   },
   { tableName: 'users', underscored: true },
 );

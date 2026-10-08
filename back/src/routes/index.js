@@ -11,6 +11,7 @@ import notifications from './notifications.js';
 import couriers from './couriers.js';
 import courierApp from './courierApp.js';
 import uploads from './uploads.js';
+import referrals from './referrals.js';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/notifications', notifications);
 router.use('/couriers', couriers);
 router.use('/courier', courierApp);
 router.use('/uploads', uploads);
+router.use('/referrals', referrals);
 
 export default router;

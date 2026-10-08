@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const distDir = join(__dirname, 'dist');
+const publicDir = join(__dirname, 'public');
 const port = Number(process.env.PORT || 3000);
 const host = process.env.HOST || '0.0.0.0';
 const backend = new URL(process.env.API_BACKEND || 'http://127.0.0.1:3001');
@@ -69,6 +70,20 @@ const server = createServer((req, res) => {
   }
 
   const urlPath = decodeURIComponent(rawUrl.split('?')[0]);
+
+  if (urlPath.startsWith('/.well-known/')) {
+    const wellKnownPath = join(publicDir, urlPath);
+    if (wellKnownPath.startsWith(publicDir) && existsSync(wellKnownPath) && statSync(wellKnownPath).isFile()) {
+      const headers = { 'Content-Type': mimeTypes[extname(wellKnownPath)] || 'application/json' };
+      if (urlPath.endsWith('apple-app-site-association')) {
+        headers['Content-Type'] = 'application/json';
+      }
+      res.writeHead(200, headers);
+      createReadStream(wellKnownPath).pipe(res);
+      return;
+    }
+  }
+
   let filePath = join(distDir, urlPath === '/' ? 'index.html' : urlPath);
 
   if (!filePath.startsWith(distDir)) {

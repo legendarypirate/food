@@ -9,6 +9,7 @@ import { CouriersPage } from './pages/couriers-page';
 import { DashboardPage } from './pages/dashboard-page';
 import { DishesPage } from './pages/dishes-page';
 import { LandingPage } from './pages/landing-page';
+import { InvitePage } from './pages/invite-page';
 import { LoginPage } from './pages/login-page';
 import { PrivacyPage } from './pages/privacy-page';
 import { OrdersPage } from './pages/orders-page';
@@ -22,6 +23,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LandingPage />} />
+        <Route path="/invite/:referralCode" element={<InvitePage />} />
         <Route path="/privacy" element={<PrivacyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route
