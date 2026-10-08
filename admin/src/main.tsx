@@ -17,6 +17,7 @@ import { PaymentsPage } from './pages/payments-page';
 import { RestaurantsPage } from './pages/restaurants-page';
 import { NotificationsPage } from './pages/notifications-page';
 import { UsersPage } from './pages/users-page';
+import { ReferralsPage } from './pages/referrals-page';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -36,6 +37,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         >
           <Route index element={<DashboardPage />} />
           <Route path="users" element={<UsersPage />} />
+          <Route path="referrals" element={<ReferralsPage />} />
           <Route path="restaurants" element={<RestaurantsPage />} />
           <Route path="dishes" element={<DishesPage />} />
           <Route path="orders" element={<OrdersPage />} />

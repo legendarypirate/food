@@ -88,6 +88,12 @@ export const api = {
         { method: 'POST', body: JSON.stringify({ phone, password }) },
       ),
   },
+  referrals: {
+    adminOverview: (limit?: number) =>
+      request<AdminReferralOverview>(
+        `/referrals/admin/overview${limit ? `?limit=${limit}` : ''}`,
+      ),
+  },
   orders: {
     list: () => request<Order[]>('/orders'),
     updateStatus: (id: string, status: string) =>
@@ -204,6 +210,38 @@ export type User = {
   orderCount: number;
   avatarUrl: string | null;
   isActive: boolean;
+};
+
+export type AdminReferralUser = {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  referralCode: string | null;
+  phoneVerified: boolean;
+  points: number;
+};
+
+export type AdminReferralRow = {
+  id: number;
+  status: 'registered' | 'completed';
+  clickId: string | null;
+  registeredAt: string;
+  completedAt: string | null;
+  createdAt: string;
+  inviter: AdminReferralUser | null;
+  invitee: AdminReferralUser | null;
+};
+
+export type AdminReferralOverview = {
+  summary: {
+    linkClicks: number;
+    invitesRegistered: number;
+    invitesPendingPhoneVerify: number;
+    invitesCompleted: number;
+    rewardPointsPerInvite: number;
+  };
+  referrals: AdminReferralRow[];
 };
 
 export type QPayPayment = {

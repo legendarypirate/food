@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { requireAuth } from '../middleware/auth.js';
+import { requireAdmin, requireAuth } from '../middleware/auth.js';
 import { referralRateLimit } from '../middleware/referralRateLimit.js';
 import { User } from '../models/index.js';
 import {
@@ -7,6 +7,7 @@ import {
   getMeReferralPayload,
   getPublicReferralInfo,
   recordReferralClick,
+  getAdminReferralOverview,
 } from '../services/referralService.js';
 import { normalizeReferralCode } from '../utils/referralCode.js';
 
@@ -33,6 +34,16 @@ router.get('/me', requireAuth, async (req, res, next) => {
     if (!user) return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
     const payload = await getMeReferralPayload(user);
     res.json(payload);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get('/admin/overview', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const limit = req.query.limit;
+    const data = await getAdminReferralOverview({ limit });
+    res.json(data);
   } catch (err) {
     next(err);
   }

@@ -9,6 +9,7 @@ import {
   Tags,
   Truck,
   Users,
+  UserPlus,
 } from 'lucide-react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { clearAuth, getAuth } from '@/lib/auth';
@@ -18,6 +19,7 @@ import { cn } from '@/lib/utils';
 const nav = [
   { to: '/admin', label: mn.pages.dashboard, icon: LayoutDashboard, end: true },
   { to: '/admin/users', label: mn.pages.users, icon: Users },
+  { to: '/admin/referrals', label: mn.pages.referrals, icon: UserPlus },
   { to: '/admin/restaurants', label: mn.pages.restaurants, icon: Store },
   { to: '/admin/dishes', label: mn.pages.dishes, icon: Soup },
   { to: '/admin/orders', label: mn.pages.orders, icon: Receipt },

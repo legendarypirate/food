@@ -277,3 +277,58 @@ export async function getMeReferralPayload(user) {
     stats,
   };
 }
+
+function adminUserSnippet(user) {
+  if (!user) return null;
+  const json = user.toJSON ? user.toJSON() : user;
+  return {
+    id: json.id,
+    name: json.name,
+    email: json.email,
+    phone: json.phone,
+    referralCode: json.referralCode || null,
+    phoneVerified: Boolean(json.phoneVerifiedAt),
+    points: json.points ?? 0,
+  };
+}
+
+export async function getAdminReferralOverview({ limit = 100 } = {}) {
+  const capped = Math.min(Math.max(Number(limit) || 100, 1), 500);
+
+  const [clickCount, pendingCount, completedCount, relationships] = await Promise.all([
+    ReferralClick.count(),
+    UserReferral.count({ where: { status: 'registered' } }),
+    UserReferral.count({ where: { status: 'completed' } }),
+    UserReferral.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: capped,
+      include: [
+        { model: User, as: 'inviter', attributes: ['id', 'name', 'email', 'phone', 'referralCode', 'phoneVerifiedAt', 'points'] },
+        { model: User, as: 'invitee', attributes: ['id', 'name', 'email', 'phone', 'referralCode', 'phoneVerifiedAt', 'points'] },
+      ],
+    }),
+  ]);
+
+  return {
+    summary: {
+      linkClicks: clickCount,
+      invitesRegistered: pendingCount + completedCount,
+      invitesPendingPhoneVerify: pendingCount,
+      invitesCompleted: completedCount,
+      rewardPointsPerInvite: INVITER_REWARD_POINTS,
+    },
+    referrals: relationships.map((row) => {
+      const json = row.toJSON();
+      return {
+        id: json.id,
+        status: json.status,
+        clickId: json.clickId,
+        registeredAt: json.registeredAt,
+        completedAt: json.completedAt,
+        createdAt: json.createdAt,
+        inviter: adminUserSnippet(json.inviter),
+        invitee: adminUserSnippet(json.invitee),
+      };
+    }),
+  };
+}
