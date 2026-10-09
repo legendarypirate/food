@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import { User, ReferralClick, UserReferral } from '../models/index.js';
 import {
@@ -119,6 +120,7 @@ export async function getReferralStatsForUser(userId) {
     invitedRegistered: pending + completed,
     invitedCompleted: completed,
     invitedPendingPhoneVerify: pending,
+    pointsEarned: completed * INVITER_REWARD_POINTS,
   };
 }
 
@@ -266,6 +268,36 @@ export async function claimReferralForUser({ inviteeUserId, referralCode, clickI
       pointsAwardedToInviter: reward?.pointsAwarded ?? 0,
     };
   });
+}
+
+/**
+ * App Store installs do not receive the invite link. If this phone just
+ * opened an invite page, attach that click when they verify.
+ */
+export async function claimLatestClickForNewUser(inviteeUserId, ip) {
+  const ipHash = hashClientIp(ip);
+  if (!ipHash) return null;
+
+  const since = new Date(Date.now() - CLAIM_MAX_AGE_MS);
+  const click = await ReferralClick.findOne({
+    where: {
+      ipHash,
+      createdAt: { [Op.gte]: since },
+    },
+    order: [['createdAt', 'DESC']],
+  });
+  if (!click) return null;
+
+  try {
+    return await claimReferralForUser({
+      inviteeUserId,
+      referralCode: click.referralCode,
+      clickId: click.clickId,
+    });
+  } catch (err) {
+    if ([400, 403, 404, 409].includes(err.statusCode)) return null;
+    throw err;
+  }
 }
 
 export async function getMeReferralPayload(user) {

@@ -2,7 +2,10 @@ import { Router } from 'express';
 import sequelize from '../config/database.js';
 import { User } from '../models/index.js';
 import { issueToken, optionalAuth, requireAuth, revokeToken } from '../middleware/auth.js';
-import { completeReferralRewardForInvitee } from '../services/referralService.js';
+import {
+  claimLatestClickForNewUser,
+  completeReferralRewardForInvitee,
+} from '../services/referralService.js';
 import { serializeUser } from '../utils/serializers.js';
 import { verifyPassword } from '../utils/password.js';
 import { formatPhone, isValidMnPhone, normalizePhone } from '../utils/phone.js';
@@ -80,6 +83,12 @@ async function attachVerifiedPhoneToUser(userId, phone) {
   });
   await completeReferralRewardForInvitee(user.id);
   return user;
+}
+
+function clientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') return forwarded.split(',')[0].trim();
+  return req.socket?.remoteAddress || null;
 }
 
 function sendAuthError(res, err) {
@@ -275,8 +284,9 @@ router.get('/verify/:sessionId', async (req, res, next) => {
       user = await attachVerifiedPhoneToUser(local.userId, local.phone);
     } else {
       user = await resolveVerifiedCustomer(local.phone);
-      await completeReferralRewardForInvitee(user.id);
     }
+    await claimLatestClickForNewUser(user.id, clientIp(req));
+    await completeReferralRewardForInvitee(user.id);
     consumeVerifySession(sessionId);
     const token = issueToken(user.id);
     res.json({

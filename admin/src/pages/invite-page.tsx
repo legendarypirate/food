@@ -110,9 +110,6 @@ export function InvitePage() {
           if (platform === 'android' && id) {
             setRedirecting(true);
             window.location.href = buildPlayStoreUrl(code, id);
-          } else if (platform === 'ios') {
-            setRedirecting(true);
-            window.location.href = IOS_STORE;
           }
         }, 800);
       } catch (e) {
@@ -188,9 +185,8 @@ export function InvitePage() {
             </div>
             <h1>{info.inviteMessage}</h1>
             <p className="invite-lead">
-              Foody апп-аар Монголын шилдэг хоолыг хурдан захиалаарай. Доорх товчоор апп татаж,
-              бүртгүүлэхдээ урилга автоматаар холбогдоно (Android). iOS дээр кодоо гараар оруулах
-              боломжтой.
+              Foody апп-аар Монголын шилдэг хоолыг хурдан захиалаарай. App Store товч урилгын
+              холбоосыг хуулж, апп суулгаад утсаа баталгаажуулахад урилга холбогдоно.
             </p>
 
             {redirecting && (
@@ -212,7 +208,14 @@ export function InvitePage() {
                 <Download size={18} />
                 Google Play
               </a>
-              <a className="invite-store-btn invite-store-ios" href={IOS_STORE}>
+              <a
+                className="invite-store-btn invite-store-ios"
+                href={IOS_STORE}
+                onClick={() => {
+                  const text = referralUrl;
+                  navigator.clipboard?.writeText(text).catch(() => {});
+                }}
+              >
                 <Download size={18} />
                 App Store
               </a>
