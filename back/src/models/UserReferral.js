@@ -46,6 +46,12 @@ const UserReferral = sequelize.define(
       allowNull: true,
       field: 'completed_at',
     },
+    pointsAwarded: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      field: 'points_awarded',
+    },
   },
   {
     tableName: 'user_referrals',

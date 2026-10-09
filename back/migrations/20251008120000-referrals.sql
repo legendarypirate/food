@@ -40,6 +40,9 @@ CREATE TABLE IF NOT EXISTS user_referrals (
   CONSTRAINT user_referrals_status_check CHECK (status IN ('registered', 'completed'))
 );
 
+ALTER TABLE user_referrals
+  ADD COLUMN IF NOT EXISTS points_awarded INTEGER NOT NULL DEFAULT 0;
+
 CREATE INDEX IF NOT EXISTS user_referrals_inviter_idx
   ON user_referrals (inviter_user_id);
 

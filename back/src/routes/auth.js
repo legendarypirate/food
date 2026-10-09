@@ -3,6 +3,7 @@ import sequelize from '../config/database.js';
 import { User } from '../models/index.js';
 import { issueToken, optionalAuth, requireAuth, revokeToken } from '../middleware/auth.js';
 import {
+  applyUncreditedReferralPoints,
   claimLatestClickForNewUser,
   completeReferralRewardForInvitee,
 } from '../services/referralService.js';
@@ -318,6 +319,7 @@ router.get('/me', requireAuth, async (req, res, next) => {
         isActive: true,
       });
     }
+    await applyUncreditedReferralPoints(req.userId);
     const user = await User.findByPk(req.userId);
     if (!user) return res.status(404).json({ error: 'Хэрэглэгч олдсонгүй' });
     res.json(serializeUser(user));

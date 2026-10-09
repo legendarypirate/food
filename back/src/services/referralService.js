@@ -154,7 +154,11 @@ export async function completeReferralRewardForInvitee(inviteeUserId) {
     if (!inviter) return null;
 
     await referral.update(
-      { status: 'completed', completedAt: new Date() },
+      {
+        status: 'completed',
+        completedAt: new Date(),
+        pointsAwarded: INVITER_REWARD_POINTS,
+      },
       { transaction },
     );
     await inviter.update(
@@ -298,6 +302,42 @@ export async function claimLatestClickForNewUser(inviteeUserId, ip) {
     if ([400, 403, 404, 409].includes(err.statusCode)) return null;
     throw err;
   }
+}
+
+/** Adds referral points that were counted but never written to the balance. */
+export async function applyUncreditedReferralPoints(inviterUserId) {
+  return sequelize.transaction(async (transaction) => {
+    const pending = await UserReferral.findAll({
+      where: {
+        inviterUserId,
+        status: 'completed',
+        [Op.or]: [{ pointsAwarded: 0 }, { pointsAwarded: null }],
+      },
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (pending.length === 0) return 0;
+
+    const inviter = await User.findByPk(inviterUserId, {
+      transaction,
+      lock: transaction.LOCK.UPDATE,
+    });
+    if (!inviter) return 0;
+
+    const total = pending.length * INVITER_REWARD_POINTS;
+    await inviter.update(
+      { points: (inviter.points || 0) + total },
+      { transaction },
+    );
+    await UserReferral.update(
+      { pointsAwarded: INVITER_REWARD_POINTS },
+      {
+        where: { id: pending.map((row) => row.id) },
+        transaction,
+      },
+    );
+    return total;
+  });
 }
 
 export async function getMeReferralPayload(user) {
