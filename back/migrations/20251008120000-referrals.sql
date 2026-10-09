@@ -42,3 +42,47 @@ CREATE TABLE IF NOT EXISTS user_referrals (
 
 CREATE INDEX IF NOT EXISTS user_referrals_inviter_idx
   ON user_referrals (inviter_user_id);
+
+-- sequelize.sync creates NOT NULL user FKs as NO ACTION, which blocks user deletes.
+-- Replace whatever constraint is on these columns with the intended action.
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT DISTINCT t.relname AS table_name, c.conname
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = ANY (c.conkey)
+    WHERE n.nspname = 'public'
+      AND c.contype = 'f'
+      AND (
+        (t.relname = 'referral_clicks' AND a.attname = 'inviter_user_id')
+        OR (t.relname = 'user_referrals' AND a.attname IN ('inviter_user_id', 'invitee_user_id', 'click_id'))
+        OR (t.relname = 'users' AND a.attname = 'invited_by_user_id')
+      )
+  LOOP
+    EXECUTE format('ALTER TABLE %I DROP CONSTRAINT %I', r.table_name, r.conname);
+  END LOOP;
+END $$;
+
+ALTER TABLE referral_clicks
+  ADD CONSTRAINT referral_clicks_inviter_user_id_fkey
+  FOREIGN KEY (inviter_user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE user_referrals
+  ADD CONSTRAINT user_referrals_inviter_user_id_fkey
+  FOREIGN KEY (inviter_user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE user_referrals
+  ADD CONSTRAINT user_referrals_invitee_user_id_fkey
+  FOREIGN KEY (invitee_user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE user_referrals
+  ADD CONSTRAINT user_referrals_click_id_fkey
+  FOREIGN KEY (click_id) REFERENCES referral_clicks(click_id) ON DELETE SET NULL;
+
+ALTER TABLE users
+  ADD CONSTRAINT users_invited_by_user_id_fkey
+  FOREIGN KEY (invited_by_user_id) REFERENCES users(id) ON DELETE SET NULL;

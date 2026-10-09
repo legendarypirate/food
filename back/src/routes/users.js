@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import sequelize from '../config/database.js';
 import { User } from '../models/index.js';
 import { serializeUser } from '../utils/serializers.js';
 
@@ -47,7 +48,7 @@ router.delete('/:id', async (req, res, next) => {
   try {
     const user = await User.findByPk(req.params.id);
     if (!user) return res.status(404).json({ error: 'Not found' });
-    await user.destroy();
+    await sequelize.transaction((transaction) => user.destroy({ transaction }));
     res.status(204).send();
   } catch (err) {
     next(err);

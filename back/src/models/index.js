@@ -1,3 +1,4 @@
+import { Op } from 'sequelize';
 import Category from './Category.js';
 import Dish from './Dish.js';
 import Order from './Order.js';
@@ -39,13 +40,81 @@ OrderItem.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
 Order.hasMany(QPayPayment, { foreignKey: 'orderId', as: 'payments' });
 QPayPayment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
 
-User.belongsTo(User, { foreignKey: 'invitedByUserId', as: 'invitedBy' });
-User.hasMany(UserReferral, { foreignKey: 'inviterUserId', as: 'sentReferrals' });
-User.hasMany(UserReferral, { foreignKey: 'inviteeUserId', as: 'receivedReferral' });
-UserReferral.belongsTo(User, { foreignKey: 'inviterUserId', as: 'inviter' });
-UserReferral.belongsTo(User, { foreignKey: 'inviteeUserId', as: 'invitee' });
-UserReferral.belongsTo(ReferralClick, { foreignKey: 'clickId', as: 'click' });
-ReferralClick.belongsTo(User, { foreignKey: 'inviterUserId', as: 'inviter' });
+User.belongsTo(User, {
+  foreignKey: 'invitedByUserId',
+  as: 'invitedBy',
+  onDelete: 'SET NULL',
+});
+User.hasMany(ReferralClick, {
+  foreignKey: 'inviterUserId',
+  as: 'referralClicks',
+  onDelete: 'CASCADE',
+});
+User.hasMany(UserReferral, {
+  foreignKey: 'inviterUserId',
+  as: 'sentReferrals',
+  onDelete: 'CASCADE',
+});
+User.hasMany(UserReferral, {
+  foreignKey: 'inviteeUserId',
+  as: 'receivedReferral',
+  onDelete: 'CASCADE',
+});
+UserReferral.belongsTo(User, {
+  foreignKey: 'inviterUserId',
+  as: 'inviter',
+  onDelete: 'CASCADE',
+});
+UserReferral.belongsTo(User, {
+  foreignKey: 'inviteeUserId',
+  as: 'invitee',
+  onDelete: 'CASCADE',
+});
+UserReferral.belongsTo(ReferralClick, {
+  foreignKey: 'clickId',
+  as: 'click',
+  onDelete: 'SET NULL',
+});
+ReferralClick.belongsTo(User, {
+  foreignKey: 'inviterUserId',
+  as: 'inviter',
+  onDelete: 'CASCADE',
+});
+
+User.addHook('beforeDestroy', async (user, options) => {
+  const transaction = options.transaction;
+  const id = user.id;
+
+  await User.update(
+    { invitedByUserId: null },
+    { where: { invitedByUserId: id }, transaction },
+  );
+
+  const clicks = await ReferralClick.findAll({
+    where: { inviterUserId: id },
+    attributes: ['clickId'],
+    transaction,
+  });
+  const clickIds = clicks.map((click) => click.clickId);
+  if (clickIds.length > 0) {
+    await UserReferral.update(
+      { clickId: null },
+      { where: { clickId: { [Op.in]: clickIds } }, transaction },
+    );
+  }
+
+  await UserReferral.destroy({
+    where: {
+      [Op.or]: [{ inviterUserId: id }, { inviteeUserId: id }],
+    },
+    transaction,
+  });
+
+  await ReferralClick.destroy({
+    where: { inviterUserId: id },
+    transaction,
+  });
+});
 
 export {
   Category,

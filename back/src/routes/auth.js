@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import sequelize from '../config/database.js';
 import { User } from '../models/index.js';
 import { issueToken, optionalAuth, requireAuth, revokeToken } from '../middleware/auth.js';
 import { completeReferralRewardForInvitee } from '../services/referralService.js';
@@ -376,7 +377,7 @@ router.delete('/me', requireAuth, async (req, res, next) => {
     const token = (req.headers.authorization || '').slice(7);
     if (token && token !== 'demo-admin-token') revokeToken(token);
 
-    await user.destroy();
+    await sequelize.transaction((transaction) => user.destroy({ transaction }));
     res.json({ ok: true });
   } catch (err) {
     next(err);
