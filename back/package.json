@@ -12,7 +12,8 @@
     "db:migrate:referrals": "node scripts/run-referrals-migration.js",
     "db:migrate:phone-verify": "node scripts/run-phone-verify-migration.js",
     "db:migrate:order-phone": "node scripts/run-order-phone-migration.js",
-    "db:migrate:payment-delegation": "node scripts/run-payment-delegation-migration.js"
+    "db:migrate:payment-delegation": "node scripts/run-payment-delegation-migration.js",
+    "db:migrate:pending-payment-order": "node scripts/run-pending-payment-order-migration.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

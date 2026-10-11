@@ -53,6 +53,11 @@ export function serializeOrder(o) {
   const json = o.toJSON ? o.toJSON() : o;
   const restaurant = json.restaurant || json.Restaurant;
   const courier = json.courier || json.Courier;
+  const payments = json.payments || json.QPayPayments || [];
+  const payment =
+    payments.find((p) => p.status === 'pending' || p.payerRequestStatus) ||
+    payments[0] ||
+    null;
   return {
     id: String(json.id),
     orderNumber: json.orderNumber,
@@ -92,6 +97,9 @@ export function serializeOrder(o) {
           avatarUrl: courier.avatarUrl || null,
         }
       : null,
+    paymentId: payment?.id ?? null,
+    payerRequestStatus: payment?.payerRequestStatus || null,
+    payerPhone: payment?.payerPhone || null,
   };
 }
 

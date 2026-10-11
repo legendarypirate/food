@@ -24,6 +24,15 @@ const include = [
   },
 ];
 
+async function awardCheckoutRewards(userId, { phone, deliveryAddress, total }) {
+  if (!userId) return;
+  const user = await User.findByPk(userId);
+  if (!user) return;
+  await syncUserCheckoutContact(user, { phone, deliveryAddress });
+  await user.increment('orderCount');
+  await user.increment('points', { by: Math.floor(total / 1000) });
+}
+
 export async function createOrderFromCheckout({
   restaurantId,
   items,
@@ -36,6 +45,8 @@ export async function createOrderFromCheckout({
   isPreOrder = false,
   orderNumber,
   expectedAmount,
+  status = 'active',
+  awardRewards,
 }) {
   if (!restaurantId || !Array.isArray(items) || items.length === 0) {
     throw new Error('Захиалгын мэдээлэл дутуу байна');
@@ -72,7 +83,7 @@ export async function createOrderFromCheckout({
     orderNumber: number,
     userId: userId || null,
     restaurantId,
-    status: 'active',
+    status,
     total,
     deliveryAddress: resolvedAddress,
     contactPhone: formattedPhone,
@@ -94,12 +105,13 @@ export async function createOrderFromCheckout({
     })),
   );
 
-  if (userId) {
+  const shouldAward = awardRewards ?? status === 'active';
+  if (shouldAward) {
+    await awardCheckoutRewards(userId, { phone, deliveryAddress, total });
+  } else if (userId) {
     const user = await User.findByPk(userId);
     if (user) {
       await syncUserCheckoutContact(user, { phone, deliveryAddress });
-      await user.increment('orderCount');
-      await user.increment('points', { by: Math.floor(total / 1000) });
     }
   }
 
@@ -114,11 +126,30 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
   }
 
   const metadata = payment.metadata || {};
-  const order = await createOrderFromCheckout({
-    ...metadata,
-    orderNumber: payment.senderInvoiceNo,
-    expectedAmount: payment.amount,
-  });
+  let order;
+
+  if (payment.orderId) {
+    const existing = await Order.findByPk(payment.orderId, { include });
+    if (existing) {
+      if (existing.status === 'pending_payment' || existing.status === 'cancelled') {
+        await existing.update({ status: 'active' });
+        await awardCheckoutRewards(existing.userId, {
+          phone: metadata.phone,
+          deliveryAddress: metadata.deliveryAddress,
+          total: existing.total,
+        });
+      }
+      order = serializeOrder(await Order.findByPk(existing.id, { include }));
+    }
+  }
+
+  if (!order) {
+    order = await createOrderFromCheckout({
+      ...metadata,
+      orderNumber: payment.senderInvoiceNo,
+      expectedAmount: payment.amount,
+    });
+  }
 
   await payment.update({
     status: 'paid',
@@ -134,6 +165,36 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
   }
 
   return { payment, order };
+}
+
+export async function cancelUnpaidDelegatedOrder(payment) {
+  if (!payment.orderId) return;
+  const order = await Order.findByPk(payment.orderId);
+  if (order && order.status === 'pending_payment') {
+    await order.update({ status: 'cancelled' });
+  }
+}
+
+/** Create (or revive) an unpaid order so the requester sees "төлбөр хүлээгдэж байна". */
+export async function ensurePendingDelegatedOrder(payment) {
+  if (payment.orderId) {
+    const existing = await Order.findByPk(payment.orderId);
+    if (existing && existing.status === 'cancelled') {
+      await existing.update({ status: 'pending_payment' });
+    }
+    return payment;
+  }
+
+  const metadata = payment.metadata || {};
+  const order = await createOrderFromCheckout({
+    ...metadata,
+    orderNumber: payment.senderInvoiceNo,
+    expectedAmount: payment.amount,
+    status: 'pending_payment',
+    awardRewards: false,
+  });
+  await payment.update({ orderId: Number(order.id) });
+  return payment;
 }
 
 export async function syncPaymentStatus(payment) {
@@ -160,11 +221,13 @@ export async function syncPaymentStatus(payment) {
 
   if (wireStatus === 'canceled' || wireStatus === 'cancelled') {
     await payment.update({ status: 'cancelled' });
+    await cancelUnpaidDelegatedOrder(payment);
     return { status: 'cancelled', order: null };
   }
 
   if (wireStatus === 'expired') {
     await payment.update({ status: 'expired' });
+    await cancelUnpaidDelegatedOrder(payment);
     return { status: 'expired', order: null };
   }
 

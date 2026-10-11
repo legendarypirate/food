@@ -9,7 +9,7 @@ const Order = sequelize.define(
     userId: { type: DataTypes.INTEGER, allowNull: true },
     restaurantId: { type: DataTypes.INTEGER, allowNull: false },
     status: {
-      type: DataTypes.ENUM('active', 'delivered', 'cancelled'),
+      type: DataTypes.ENUM('pending_payment', 'active', 'delivered', 'cancelled'),
       defaultValue: 'active',
     },
     total: { type: DataTypes.INTEGER, allowNull: false },

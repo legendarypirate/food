@@ -2,6 +2,10 @@ import { Op } from 'sequelize';
 import sequelize from '../config/database.js';
 import { Order, QPayPayment, Restaurant, User } from '../models/index.js';
 import { formatPhone, isValidMnPhone, normalizePhone } from '../utils/phone.js';
+import {
+  cancelUnpaidDelegatedOrder,
+  ensurePendingDelegatedOrder,
+} from './paymentFulfillment.js';
 import { isPushConfigured, sendToUser } from './pushNotification.js';
 
 /** How long a payer can still see a request in their list (incl. resolved ones). */
@@ -88,6 +92,20 @@ export function canViewPayment(payment, user) {
   return isRequester(payment, user) || isPayer(payment, user);
 }
 
+function checkoutUrlFor(payment, viewer) {
+  if (!payment?.qpayShortUrl) return '';
+  if (viewer?.role === 'admin') return payment.qpayShortUrl;
+  if (viewer && isRequester(payment, viewer)) return payment.qpayShortUrl;
+  if (
+    payment.payerRequestStatus === 'accepted' &&
+    viewer &&
+    isPayer(payment, viewer)
+  ) {
+    return payment.qpayShortUrl;
+  }
+  return '';
+}
+
 async function loadRestaurant(payment) {
   const restaurantId = Number(payment?.metadata?.restaurantId);
   if (!restaurantId) return null;
@@ -127,8 +145,9 @@ export async function serializePaymentRequest(payment, { requester, payer, viewe
     requestedAt: payment.payerRequestedAt,
     respondedAt: payment.payerRespondedAt,
     expiresAt: payment.expiresAt,
-    checkoutUrl: payment.qpayShortUrl || '',
+    checkoutUrl: checkoutUrlFor(payment, viewer),
     senderInvoiceNo: payment.senderInvoiceNo,
+    orderId: payment.orderId ? String(payment.orderId) : null,
     orderNumber,
     requester: publicUser(requesterUser),
     payer: publicUser(payerUser),
@@ -175,20 +194,28 @@ export async function requestPayer(payment, { requester, phone, note }) {
   }
 
   const payer = await findCustomerByPhone(digits);
-  if (payer && payer.id === requester.id) {
+  if (!payer) {
+    throw new DelegationError(
+      'Энэ утастай хэрэглэгч Foody апп-д бүртгэлгүй байна',
+      404,
+    );
+  }
+  if (payer.id === requester.id) {
     throw new DelegationError('Өөрийнхөө дугаарт хүсэлт илгээх боломжгүй');
   }
 
   const trimmedNote = String(note || '').trim().slice(0, 200);
 
   await payment.update({
-    payerUserId: payer?.id || null,
+    payerUserId: payer.id,
     payerPhone: formatPhone(digits),
     payerNote: trimmedNote || null,
     payerRequestStatus: 'pending',
     payerRequestedAt: new Date(),
     payerRespondedAt: null,
   });
+
+  await ensurePendingDelegatedOrder(payment);
 
   await notify(payer, {
     title: 'Төлбөрийн хүсэлт',
@@ -201,7 +228,7 @@ export async function requestPayer(payment, { requester, phone, note }) {
 
 /** Requester withdraws the request. */
 export async function cancelPayerRequest(payment, { requester }) {
-  if (payment.payerRequestStatus !== 'pending') {
+  if (!['pending', 'accepted'].includes(payment.payerRequestStatus)) {
     throw new DelegationError('Идэвхтэй хүсэлт байхгүй байна');
   }
 
@@ -209,6 +236,7 @@ export async function cancelPayerRequest(payment, { requester }) {
     payerRequestStatus: 'cancelled',
     payerRespondedAt: new Date(),
   });
+  await cancelUnpaidDelegatedOrder(payment);
 
   const payer = payment.payerUserId ? await User.findByPk(payment.payerUserId) : null;
   await notify(payer, {
@@ -231,6 +259,7 @@ export async function declinePayerRequest(payment, { payer }) {
     payerRequestStatus: 'declined',
     payerRespondedAt: new Date(),
   });
+  await cancelUnpaidDelegatedOrder(payment);
 
   const requester = requesterIdOf(payment) ? await User.findByPk(requesterIdOf(payment)) : null;
   await notify(requester, {
@@ -246,8 +275,55 @@ export async function declinePayerRequest(payment, { payer }) {
  * Called from payment fulfillment: mark a pending friend request as paid and
  * tell the requester their order is confirmed.
  */
+export async function lookupPayerByPhone(phone, { requester } = {}) {
+  if (!isValidMnPhone(phone)) {
+    throw new DelegationError('Найзын утасны дугаар буруу (8 орон, 6-9-өөр эхэлнэ)');
+  }
+  const digits = normalizePhone(phone);
+  if (requester && normalizePhone(requester.phone) === digits) {
+    throw new DelegationError('Өөрийнхөө дугаарт хүсэлт илгээх боломжгүй');
+  }
+  const payer = await findCustomerByPhone(digits);
+  if (!payer || (requester && payer.id === requester.id)) {
+    return { found: false };
+  }
+  return {
+    found: true,
+    name: payer.name || '',
+    phone: formatPhone(digits),
+  };
+}
+
+/** Payer accepts: then they may open Wire/QPay and pay. */
+export async function acceptPayerRequest(payment, { payer }) {
+  if (payment.status !== 'pending') {
+    throw new DelegationError('Энэ төлбөр аль хэдийн шийдэгдсэн байна');
+  }
+  if (payment.payerRequestStatus === 'accepted') {
+    return serializePaymentRequest(payment, { payer, viewer: payer });
+  }
+  if (payment.payerRequestStatus !== 'pending') {
+    throw new DelegationError('Энэ хүсэлт аль хэдийн шийдэгдсэн байна');
+  }
+
+  await payment.update({
+    payerUserId: payment.payerUserId || payer.id,
+    payerRequestStatus: 'accepted',
+    payerRespondedAt: new Date(),
+  });
+
+  const requester = requesterIdOf(payment) ? await User.findByPk(requesterIdOf(payment)) : null;
+  await notify(requester, {
+    title: 'Найз тань зөвшөөрлөө',
+    body: `${payer.name || 'Найз'} ${formatAmount(payment.amount)} төлбөрийг төлөхөөр зөвшөөрлөө`,
+    data: { type: 'payment_request_accepted', paymentId: String(payment.id) },
+  });
+
+  return serializePaymentRequest(payment, { requester, payer, viewer: payer });
+}
+
 export async function markPayerRequestPaid(payment, order) {
-  if (payment.payerRequestStatus !== 'pending') return;
+  if (!['pending', 'accepted'].includes(payment.payerRequestStatus)) return;
 
   await payment.update({
     payerRequestStatus: 'paid',

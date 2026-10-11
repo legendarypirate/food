@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { Order, OrderItem, Restaurant, User } from '../models/index.js';
+import { Order, OrderItem, QPayPayment, Restaurant, User } from '../models/index.js';
 import { requireAuth } from '../middleware/auth.js';
 import {
   completeTracking,
@@ -28,6 +28,11 @@ const include = [
     model: User,
     as: 'courier',
     attributes: ['id', 'name', 'phone', 'avatarUrl', 'orderCount'],
+  },
+  {
+    model: QPayPayment,
+    as: 'payments',
+    attributes: ['id', 'status', 'payerRequestStatus', 'payerPhone'],
   },
 ];
 

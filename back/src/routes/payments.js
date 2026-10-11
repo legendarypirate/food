@@ -19,12 +19,14 @@ import {
 import { syncUserCheckoutContact } from '../services/userContact.js';
 import {
   DelegationError,
+  acceptPayerRequest,
   cancelPayerRequest,
   canViewPayment,
   declinePayerRequest,
   isPayer,
   isRequester,
   listPayerRequests,
+  lookupPayerByPhone,
   requestPayer,
   serializePaymentRequest,
 } from '../services/paymentDelegation.js';
@@ -192,6 +194,16 @@ router.post('/checkout', requireAuth, async (req, res, next) => {
 
 // ---- "Даалгах": ask a friend to pay ------------------------------------
 
+/** Does a Foody customer with this phone exist? Used before sending Даалгах. */
+router.get('/payer-lookup', requireAuth, async (req, res, next) => {
+  try {
+    const result = await lookupPayerByPhone(req.query.phone, { requester: req.user });
+    res.json(result);
+  } catch (err) {
+    sendDelegationError(res, err, next);
+  }
+});
+
 /** Requests addressed to the signed-in user (they are the payer). */
 router.get('/requests', requireAuth, async (req, res, next) => {
   try {
@@ -257,6 +269,20 @@ router.post('/:id/delegate/cancel', requireAuth, async (req, res, next) => {
   }
 });
 
+/** Payer accepts — then they may open Wire/QPay. */
+router.post('/:id/delegate/accept', requireAuth, async (req, res, next) => {
+  try {
+    const payment = await QPayPayment.findByPk(req.params.id);
+    if (!payment) return res.status(404).json({ error: 'Not found' });
+    if (!isPayer(payment, req.user)) {
+      return res.status(403).json({ error: 'Энэ хүсэлт танд хамаарахгүй' });
+    }
+    res.json(await acceptPayerRequest(payment, { payer: req.user }));
+  } catch (err) {
+    sendDelegationError(res, err, next);
+  }
+});
+
 /** Payer declines. */
 router.post('/:id/delegate/decline', requireAuth, async (req, res, next) => {
   try {
@@ -285,9 +311,10 @@ router.get('/:id/status', requireAuth, async (req, res, next) => {
       include: [{ model: Order, as: 'order', attributes: ['orderNumber'] }],
     });
 
+    const payload = await serializePaymentRequest(refreshed, { viewer: req.user });
     res.json({
       ...serializeQPayPayment(refreshed),
-      checkoutUrl: refreshed.qpayShortUrl,
+      checkoutUrl: payload.checkoutUrl,
       order: result.order,
       wireStatus: result.status,
     });

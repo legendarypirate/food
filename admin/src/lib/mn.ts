@@ -92,6 +92,7 @@ export const mn = {
     cancelled: 'Цуцлагдсан',
   },
   orderStatus: {
+    pending_payment: 'Төлбөр хүлээгдэж байна',
     active: 'Идэвхтэй',
     delivered: 'Хүргэгдсэн',
     cancelled: 'Цуцлагдсан',
