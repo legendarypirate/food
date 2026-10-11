@@ -136,6 +136,10 @@ export function serializeQPayPayment(p) {
     metadata: json.metadata || null,
     isActive: json.isActive,
     createdAt: json.createdAt,
+    payerUserId: json.payerUserId || null,
+    payerPhone: json.payerPhone || null,
+    payerRequestStatus: json.payerRequestStatus || null,
+    payerRequestedAt: json.payerRequestedAt || null,
   };
 }
 

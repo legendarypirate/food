@@ -39,6 +39,11 @@ OrderItem.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
 
 Order.hasMany(QPayPayment, { foreignKey: 'orderId', as: 'payments' });
 QPayPayment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
+QPayPayment.belongsTo(User, {
+  foreignKey: 'payerUserId',
+  as: 'payer',
+  constraints: false,
+});
 
 User.belongsTo(User, {
   foreignKey: 'invitedByUserId',

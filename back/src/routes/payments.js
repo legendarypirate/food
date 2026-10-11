@@ -17,8 +17,26 @@ import {
   verifyWebhookSignature,
 } from '../services/wireService.js';
 import { syncUserCheckoutContact } from '../services/userContact.js';
+import {
+  DelegationError,
+  cancelPayerRequest,
+  canViewPayment,
+  declinePayerRequest,
+  isPayer,
+  isRequester,
+  listPayerRequests,
+  requestPayer,
+  serializePaymentRequest,
+} from '../services/paymentDelegation.js';
 
 const router = Router();
+
+function sendDelegationError(res, err, next) {
+  if (err instanceof DelegationError) {
+    return res.status(err.statusCode).json({ error: err.message });
+  }
+  return next(err);
+}
 
 function normalizePhone(phone) {
   const digits = String(phone || '').replace(/\D/g, '');
@@ -172,13 +190,93 @@ router.post('/checkout', requireAuth, async (req, res, next) => {
   }
 });
 
+// ---- "Даалгах": ask a friend to pay ------------------------------------
+
+/** Requests addressed to the signed-in user (they are the payer). */
+router.get('/requests', requireAuth, async (req, res, next) => {
+  try {
+    if (req.user?.role !== 'customer') return res.json([]);
+    const requests = await listPayerRequests(req.user);
+    res.json(requests);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Request detail — visible to requester, payer, or admin. */
+router.get('/requests/:id', requireAuth, async (req, res, next) => {
+  try {
+    const payment = await QPayPayment.findByPk(req.params.id, {
+      include: [{ model: Order, as: 'order', attributes: ['orderNumber'] }],
+    });
+    if (!payment || !payment.payerRequestStatus) {
+      return res.status(404).json({ error: 'Хүсэлт олдсонгүй' });
+    }
+    if (!canViewPayment(payment, req.user)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (!payment.payerUserId && isPayer(payment, req.user)) {
+      await payment.update({ payerUserId: req.userId });
+    }
+    res.json(await serializePaymentRequest(payment, { viewer: req.user }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+/** Requester sends the request to a friend's phone number. */
+router.post('/:id/delegate', requireAuth, async (req, res, next) => {
+  try {
+    const payment = await QPayPayment.findByPk(req.params.id);
+    if (!payment) return res.status(404).json({ error: 'Not found' });
+    if (!isRequester(payment, req.user)) {
+      return res.status(403).json({ error: 'Зөвхөн захиалагч даалгах боломжтой' });
+    }
+    const result = await requestPayer(payment, {
+      requester: req.user,
+      phone: req.body.phone,
+      note: req.body.note,
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    sendDelegationError(res, err, next);
+  }
+});
+
+/** Requester withdraws the request. */
+router.post('/:id/delegate/cancel', requireAuth, async (req, res, next) => {
+  try {
+    const payment = await QPayPayment.findByPk(req.params.id);
+    if (!payment) return res.status(404).json({ error: 'Not found' });
+    if (!isRequester(payment, req.user)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    res.json(await cancelPayerRequest(payment, { requester: req.user }));
+  } catch (err) {
+    sendDelegationError(res, err, next);
+  }
+});
+
+/** Payer declines. */
+router.post('/:id/delegate/decline', requireAuth, async (req, res, next) => {
+  try {
+    const payment = await QPayPayment.findByPk(req.params.id);
+    if (!payment) return res.status(404).json({ error: 'Not found' });
+    if (!isPayer(payment, req.user)) {
+      return res.status(403).json({ error: 'Энэ хүсэлт танд хамаарахгүй' });
+    }
+    res.json(await declinePayerRequest(payment, { payer: req.user }));
+  } catch (err) {
+    sendDelegationError(res, err, next);
+  }
+});
+
 router.get('/:id/status', requireAuth, async (req, res, next) => {
   try {
     const payment = await QPayPayment.findByPk(req.params.id);
     if (!payment) return res.status(404).json({ error: 'Not found' });
 
-    const metadata = payment.metadata || {};
-    if (metadata.userId && metadata.userId !== req.userId && req.user?.role !== 'admin') {
+    if (!canViewPayment(payment, req.user)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
 

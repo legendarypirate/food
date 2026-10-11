@@ -10,6 +10,7 @@ import { formatScheduledLabel } from '../utils/preOrder.js';
 import { serializeOrder } from '../utils/serializers.js';
 import { formatUbDateLabel } from '../utils/ulaanbaatarTime.js';
 import { formatPhone, isValidMnPhone } from '../utils/phone.js';
+import { markPayerRequestPaid } from './paymentDelegation.js';
 import { syncUserCheckoutContact } from './userContact.js';
 import { retrievePaymentIntent } from './wireService.js';
 
@@ -125,6 +126,12 @@ export async function fulfillPayment(payment, { wireStatus } = {}) {
     paidAt: new Date(),
     qrText: wireStatus || payment.qrText,
   });
+
+  try {
+    await markPayerRequestPaid(payment, order);
+  } catch (err) {
+    console.warn('Payment delegation: failed to mark request paid:', err.message);
+  }
 
   return { payment, order };
 }
