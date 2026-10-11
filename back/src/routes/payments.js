@@ -242,7 +242,7 @@ router.post('/:id/delegate', requireAuth, async (req, res, next) => {
     const payment = await QPayPayment.findByPk(req.params.id);
     if (!payment) return res.status(404).json({ error: 'Not found' });
     if (!isRequester(payment, req.user)) {
-      return res.status(403).json({ error: 'Зөвхөн захиалагч даалгах боломжтой' });
+      return res.status(403).json({ error: 'Зөвхөн захиалагч илгээнэ' });
     }
     const result = await requestPayer(payment, {
       requester: req.user,

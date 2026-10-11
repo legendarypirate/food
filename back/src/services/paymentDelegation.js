@@ -182,26 +182,26 @@ export async function serializePaymentRequest(payment, { requester, payer, viewe
 /** Requester asks a friend (by phone) to pay this pending payment. */
 export async function requestPayer(payment, { requester, phone, note }) {
   if (payment.status !== 'pending') {
-    throw new DelegationError('Энэ төлбөр аль хэдийн шийдэгдсэн байна');
+    throw new DelegationError('Энэ төлбөр шийдэгдсэн');
   }
   if (!isValidMnPhone(phone)) {
-    throw new DelegationError('Найзын утасны дугаар буруу (8 орон, 6-9-өөр эхэлнэ)');
+    throw new DelegationError('Утас буруу');
   }
 
   const digits = normalizePhone(phone);
   if (normalizePhone(requester.phone) === digits) {
-    throw new DelegationError('Өөрийнхөө дугаарт хүсэлт илгээх боломжгүй');
+    throw new DelegationError('Өөрийн дугаарт илгээхгүй');
   }
 
   const payer = await findCustomerByPhone(digits);
   if (!payer) {
     throw new DelegationError(
-      'Энэ утастай хэрэглэгч Foody апп-д бүртгэлгүй байна',
+      'Энэ утас аппд байхгүй',
       404,
     );
   }
   if (payer.id === requester.id) {
-    throw new DelegationError('Өөрийнхөө дугаарт хүсэлт илгээх боломжгүй');
+    throw new DelegationError('Өөрийн дугаарт илгээхгүй');
   }
 
   const trimmedNote = String(note || '').trim().slice(0, 200);
@@ -218,8 +218,8 @@ export async function requestPayer(payment, { requester, phone, note }) {
   await ensurePendingDelegatedOrder(payment);
 
   await notify(payer, {
-    title: 'Төлбөрийн хүсэлт',
-    body: `${requester.name || 'Найз'} таныг ${formatAmount(payment.amount)} захиалгын төлбөрийг төлөхийг хүсэж байна`,
+    title: 'Найз төлөхийг хүсэв',
+    body: `${requester.name || 'Найз'} ${formatAmount(payment.amount)} төлөхийг хүсэв`,
     data: { type: 'payment_request', paymentId: String(payment.id) },
   });
 
@@ -229,7 +229,7 @@ export async function requestPayer(payment, { requester, phone, note }) {
 /** Requester withdraws the request. */
 export async function cancelPayerRequest(payment, { requester }) {
   if (!['pending', 'accepted'].includes(payment.payerRequestStatus)) {
-    throw new DelegationError('Идэвхтэй хүсэлт байхгүй байна');
+    throw new DelegationError('Хүсэлт байхгүй');
   }
 
   await payment.update({
@@ -240,8 +240,8 @@ export async function cancelPayerRequest(payment, { requester }) {
 
   const payer = payment.payerUserId ? await User.findByPk(payment.payerUserId) : null;
   await notify(payer, {
-    title: 'Төлбөрийн хүсэлт цуцлагдлаа',
-    body: `${requester.name || 'Найз'} ${formatAmount(payment.amount)} төлбөрийн хүсэлтээ буцаалаа`,
+    title: 'Хүсэлт цуцлагдлаа',
+    body: `${requester.name || 'Найз'} ${formatAmount(payment.amount)} хүсэлтээ буцаалаа`,
     data: { type: 'payment_request_cancelled', paymentId: String(payment.id) },
   });
 
@@ -251,7 +251,7 @@ export async function cancelPayerRequest(payment, { requester }) {
 /** Payer declines to pay. */
 export async function declinePayerRequest(payment, { payer }) {
   if (payment.payerRequestStatus !== 'pending') {
-    throw new DelegationError('Энэ хүсэлт аль хэдийн шийдэгдсэн байна');
+    throw new DelegationError('Хүсэлт шийдэгдсэн');
   }
 
   await payment.update({
@@ -263,8 +263,8 @@ export async function declinePayerRequest(payment, { payer }) {
 
   const requester = requesterIdOf(payment) ? await User.findByPk(requesterIdOf(payment)) : null;
   await notify(requester, {
-    title: 'Төлбөрийн хүсэлт татгалзлаа',
-    body: `${payer.name || 'Найз'} ${formatAmount(payment.amount)} төлбөрийг төлөхөөс татгалзлаа`,
+    title: 'Татгалзлаа',
+    body: `${payer.name || 'Найз'} ${formatAmount(payment.amount)} төлөхөөс татгалзлаа`,
     data: { type: 'payment_request_declined', paymentId: String(payment.id) },
   });
 
@@ -277,11 +277,11 @@ export async function declinePayerRequest(payment, { payer }) {
  */
 export async function lookupPayerByPhone(phone, { requester } = {}) {
   if (!isValidMnPhone(phone)) {
-    throw new DelegationError('Найзын утасны дугаар буруу (8 орон, 6-9-өөр эхэлнэ)');
+    throw new DelegationError('Утас буруу');
   }
   const digits = normalizePhone(phone);
   if (requester && normalizePhone(requester.phone) === digits) {
-    throw new DelegationError('Өөрийнхөө дугаарт хүсэлт илгээх боломжгүй');
+    throw new DelegationError('Өөрийн дугаарт илгээхгүй');
   }
   const payer = await findCustomerByPhone(digits);
   if (!payer || (requester && payer.id === requester.id)) {
@@ -297,13 +297,13 @@ export async function lookupPayerByPhone(phone, { requester } = {}) {
 /** Payer accepts: then they may open Wire/QPay and pay. */
 export async function acceptPayerRequest(payment, { payer }) {
   if (payment.status !== 'pending') {
-    throw new DelegationError('Энэ төлбөр аль хэдийн шийдэгдсэн байна');
+    throw new DelegationError('Энэ төлбөр шийдэгдсэн');
   }
   if (payment.payerRequestStatus === 'accepted') {
     return serializePaymentRequest(payment, { payer, viewer: payer });
   }
   if (payment.payerRequestStatus !== 'pending') {
-    throw new DelegationError('Энэ хүсэлт аль хэдийн шийдэгдсэн байна');
+    throw new DelegationError('Хүсэлт шийдэгдсэн');
   }
 
   await payment.update({
@@ -314,8 +314,8 @@ export async function acceptPayerRequest(payment, { payer }) {
 
   const requester = requesterIdOf(payment) ? await User.findByPk(requesterIdOf(payment)) : null;
   await notify(requester, {
-    title: 'Найз тань зөвшөөрлөө',
-    body: `${payer.name || 'Найз'} ${formatAmount(payment.amount)} төлбөрийг төлөхөөр зөвшөөрлөө`,
+    title: 'Зөвшөөрлөө',
+    body: `${payer.name || 'Найз'} ${formatAmount(payment.amount)} төлнө`,
     data: { type: 'payment_request_accepted', paymentId: String(payment.id) },
   });
 
@@ -336,8 +336,8 @@ export async function markPayerRequestPaid(payment, order) {
   const orderLabel = order?.orderNumber ? ` Захиалга #${order.orderNumber}.` : '';
 
   await notify(requester, {
-    title: 'Захиалгын төлбөр төлөгдлөө',
-    body: `${payerLabel} таны ${formatAmount(payment.amount)} төлбөрийг төллөө.${orderLabel}`,
+    title: 'Төлсөн',
+    body: `${payerLabel} ${formatAmount(payment.amount)} төллөө.${orderLabel}`,
     data: {
       type: 'payment_request_paid',
       paymentId: String(payment.id),
