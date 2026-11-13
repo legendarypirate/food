@@ -135,6 +135,8 @@ export const mn = {
     deliveryFee: 'Хүргэлтийн төлбөр',
     rating: 'Үнэлгээ',
     imageUrl: 'Зураг URL',
+    image: 'Зураг',
+    imageHint: 'Зураг сонгож хуулна',
     images: 'Зургууд',
     imagesHint: 'Олон зураг сонгож Cloudinary руу хуулна',
     imagesUploading: 'Хуулж байна...',

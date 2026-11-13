@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-react';
+import { Plus, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { AdminPageHeader } from '@/components/admin-page-header';
 import { AdminPageState } from '@/components/admin-page-state';
@@ -18,6 +18,9 @@ export function RestaurantsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Restaurant | null>(null);
   const [form, setForm] = useState<Record<string, unknown>>({});
+  const [formError, setFormError] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const onRefresh = useCallback(async () => {
     setLoading(true);
@@ -35,8 +38,13 @@ export function RestaurantsPage() {
     onRefresh();
   }, [onRefresh]);
 
+  function imageUrl(): string {
+    return typeof form.imageUrl === 'string' ? form.imageUrl : '';
+  }
+
   function openCreate() {
     setEditing(null);
+    setFormError('');
     setForm({
       slug: '',
       name: '',
@@ -57,8 +65,24 @@ export function RestaurantsPage() {
 
   function openEdit(r: Restaurant) {
     setEditing(r);
+    setFormError('');
     setForm({ ...r });
     setOpen(true);
+  }
+
+  async function handleImage(files: FileList | null) {
+    const file = files?.[0];
+    if (!file) return;
+    setFormError('');
+    setUploading(true);
+    try {
+      const { urls: uploaded } = await api.uploads.images([file]);
+      setForm((prev) => ({ ...prev, imageUrl: uploaded[0] || '' }));
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : mn.loadError);
+    } finally {
+      setUploading(false);
+    }
   }
 
   async function handleDelete(r: Restaurant) {
@@ -68,19 +92,33 @@ export function RestaurantsPage() {
   }
 
   async function handleSave() {
+    const uploadedImage = imageUrl();
+    if (!uploadedImage) {
+      setFormError('Зураг оруулна уу');
+      return;
+    }
     const body = {
       ...form,
       deliveryFee: Number(form.deliveryFee) || 0,
       rating: Number(form.rating) || 0,
       reviewCount: Number(form.reviewCount) || 0,
+      imageUrl: uploadedImage,
     };
-    if (editing) {
-      await api.restaurants.update(editing.id, body);
-    } else {
-      await api.restaurants.create(body);
+    setSaving(true);
+    setFormError('');
+    try {
+      if (editing) {
+        await api.restaurants.update(editing.id, body);
+      } else {
+        await api.restaurants.create(body);
+      }
+      setOpen(false);
+      onRefresh();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : mn.loadError);
+    } finally {
+      setSaving(false);
     }
-    setOpen(false);
-    onRefresh();
   }
 
   return (
@@ -101,6 +139,16 @@ export function RestaurantsPage() {
         onEdit={openEdit}
         onDelete={handleDelete}
         columns={[
+          {
+            key: 'image',
+            header: mn.fields.image,
+            render: (r) =>
+              r.imageUrl ? (
+                <img src={r.imageUrl} alt="" className="h-10 w-10 rounded-md object-cover" />
+              ) : (
+                '—'
+              ),
+          },
           { key: 'name', header: 'Нэр', render: (r) => r.name },
           { key: 'location', header: 'Байршил', render: (r) => r.location },
           {
@@ -159,8 +207,30 @@ export function RestaurantsPage() {
                 />
               </Field>
             </div>
-            <Field label={mn.fields.imageUrl}>
-              <Input value={String(form.imageUrl || '')} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
+            <Field label={mn.fields.image}>
+              <p className="text-xs text-muted-foreground">{mn.fields.imageHint}</p>
+              <Input
+                type="file"
+                accept="image/*"
+                disabled={uploading}
+                onChange={(e) => {
+                  void handleImage(e.target.files);
+                  e.target.value = '';
+                }}
+              />
+              {uploading && <p className="text-xs text-muted-foreground">{mn.fields.imagesUploading}</p>}
+              {imageUrl() ? (
+                <div className="relative h-24 w-24 overflow-hidden rounded-md border">
+                  <img src={imageUrl()} alt="" className="h-full w-full object-cover" />
+                  <button
+                    type="button"
+                    className="absolute right-0.5 top-0.5 rounded-full bg-black/70 p-0.5 text-white"
+                    onClick={() => setForm((prev) => ({ ...prev, imageUrl: '' }))}
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ) : null}
             </Field>
             <label className="flex items-center gap-2 text-sm">
               <input
@@ -178,9 +248,12 @@ export function RestaurantsPage() {
               />
               {mn.active}
             </label>
+            {formError && <p className="text-sm text-destructive">{formError}</p>}
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setOpen(false)}>{mn.cancel}</Button>
-              <Button onClick={handleSave}>{mn.save}</Button>
+              <Button onClick={handleSave} disabled={saving || uploading}>
+                {saving ? mn.saving : mn.save}
+              </Button>
             </div>
           </div>
         </DialogContent>

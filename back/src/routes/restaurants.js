@@ -51,10 +51,16 @@ router.get('/:id', async (req, res, next) => {
   }
 });
 
+function restaurantImageUrl(body) {
+  return typeof body.imageUrl === 'string' ? body.imageUrl.trim() : '';
+}
+
 router.post('/', async (req, res, next) => {
   try {
     const { categoryIds = [], ...data } = req.body;
-    const restaurant = await Restaurant.create(data);
+    const imageUrl = restaurantImageUrl(data);
+    if (!imageUrl) return res.status(400).json({ error: 'Зураг оруулна уу' });
+    const restaurant = await Restaurant.create({ ...data, imageUrl });
     if (categoryIds.length) {
       await restaurant.setCategories(categoryIds);
     }
@@ -70,7 +76,9 @@ router.put('/:id', async (req, res, next) => {
     const restaurant = await Restaurant.findByPk(req.params.id);
     if (!restaurant) return res.status(404).json({ error: 'Not found' });
     const { categoryIds, ...data } = req.body;
-    await restaurant.update(data);
+    const imageUrl = restaurantImageUrl({ ...restaurant.toJSON(), ...data });
+    if (!imageUrl) return res.status(400).json({ error: 'Зураг оруулна уу' });
+    await restaurant.update({ ...data, imageUrl });
     if (categoryIds) await restaurant.setCategories(categoryIds);
     const full = await loadRestaurant(restaurant.id);
     res.json(serializeRestaurant(full));
