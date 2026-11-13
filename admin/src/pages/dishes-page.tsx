@@ -23,6 +23,10 @@ export function DishesPage() {
   const [formError, setFormError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [query, setQuery] = useState('');
+  const [restaurantFilter, setRestaurantFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const onRefresh = useCallback(async () => {
     setLoading(true);
@@ -61,8 +65,8 @@ export function DishesPage() {
       slug: '',
       name: '',
       price: 0,
-      categoryId: categories[0]?.id || '',
-      restaurantId: restaurants[0]?.id || '',
+      categoryId: categoryFilter ? Number(categoryFilter) : categories[0]?.id || '',
+      restaurantId: restaurantFilter || restaurants[0]?.id || '',
       badge: '',
       badgeType: '',
       servings: '1',
@@ -149,25 +153,77 @@ export function DishesPage() {
     }
   }
 
+  function restaurantName(id: string) {
+    return restaurants.find((r) => r.id === id)?.name || '—';
+  }
+
+  const filteredDishes = dishes.filter((d) => {
+    if (restaurantFilter && d.restaurantId !== restaurantFilter) return false;
+    if (categoryFilter && String(d.categoryId ?? '') !== categoryFilter) return false;
+    if (statusFilter === 'active' && !d.isActive) return false;
+    if (statusFilter === 'inactive' && d.isActive) return false;
+    const q = query.trim().toLowerCase();
+    if (q && !d.name.toLowerCase().includes(q) && !d.slug.toLowerCase().includes(q)) return false;
+    return true;
+  });
+
   return (
     <>
       <AdminPageHeader title={mn.pages.dishes} onRefresh={onRefresh} />
       <AdminPageState loading={loading} error={error}>
     <div className="space-y-4">
-      <div className="flex justify-end">
-        <Button onClick={openCreate}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap gap-2">
+          <Input
+            className="w-full sm:w-56"
+            placeholder={mn.fields.searchDish}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          <select
+            className="flex h-10 min-w-[160px] rounded-md border border-input bg-background px-3 text-sm"
+            value={restaurantFilter}
+            onChange={(e) => setRestaurantFilter(e.target.value)}
+          >
+            <option value="">{mn.fields.restaurant}: {mn.fields.all}</option>
+            {restaurants.map((r) => (
+              <option key={r.id} value={r.id}>{r.name}</option>
+            ))}
+          </select>
+          <select
+            className="flex h-10 min-w-[160px] rounded-md border border-input bg-background px-3 text-sm"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="">{mn.fields.category}: {mn.fields.all}</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            className="flex h-10 min-w-[140px] rounded-md border border-input bg-background px-3 text-sm"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="">{mn.fields.status}: {mn.fields.all}</option>
+            <option value="active">{mn.active}</option>
+            <option value="inactive">{mn.inactive}</option>
+          </select>
+        </div>
+        <Button onClick={openCreate} className="self-end lg:self-auto">
           <Plus className="mr-2 h-4 w-4" />
           {mn.add}
         </Button>
       </div>
 
       <CrudTable
-        rows={dishes}
+        rows={filteredDishes}
         rowKey={(d) => d.id}
         onEdit={openEdit}
         onDelete={handleDelete}
         columns={[
           { key: 'name', header: 'Нэр', render: (d) => d.name },
+          { key: 'restaurant', header: mn.fields.restaurant, render: (d) => restaurantName(d.restaurantId) },
           { key: 'price', header: 'Үнэ', render: (d) => `${d.price.toLocaleString()}₮` },
           { key: 'category', header: 'Ангилал', render: (d) => d.category },
           { key: 'likes', header: 'Лайк', render: (d) => String(d.likes) },

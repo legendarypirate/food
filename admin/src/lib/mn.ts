@@ -141,6 +141,8 @@ export const mn = {
     imagesHint: 'Олон зураг сонгож Cloudinary руу хуулна',
     imagesUploading: 'Хуулж байна...',
     selectCategory: 'Ангилал сонгох',
+    searchDish: 'Хоол хайх...',
+    all: 'Бүгд',
     freeDelivery: 'Үнэгүй хүргэлт',
     price: 'Үнэ',
     category: 'Ангилал',
