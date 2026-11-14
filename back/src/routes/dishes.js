@@ -42,7 +42,9 @@ router.get('/', async (req, res, next) => {
     });
 
     if (category && category !== 'Бүгд') {
-      dishes = dishes.filter((d) => d.category?.name === category);
+      dishes = dishes.filter(
+        (d) => d.category?.name === category || d.category?.slug === category,
+      );
     }
 
     res.json(dishes.map(serializeDish));

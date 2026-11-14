@@ -43,6 +43,7 @@ export function serializeDish(d) {
     servings: json.servings,
     likes: json.likes,
     category: category?.name || '',
+    categorySlug: category?.slug || '',
     categoryId: json.categoryId,
     restaurantId: String(json.restaurantId),
     isActive: json.isActive,
